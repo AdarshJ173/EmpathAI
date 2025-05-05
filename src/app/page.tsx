@@ -7,6 +7,7 @@ import ChatInterface from "@/components/ChatInterface";
 import VoiceVisualizer from "@/components/VoiceVisualizer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import HistorySection from "@/components/HistorySection";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 export default function Home() {
   const [isListening, setIsListening] = useState(false);
@@ -40,8 +41,24 @@ export default function Home() {
       setAudioLevel(Math.random() * 0.8 + 0.2); // Random value between 0.2 and 1.0
     }, 200);
 
-    return () => clearInterval(interval);
+    // This cleanup function was incorrectly returning from the main function
+    // It should be set up with useEffect instead
   };
+
+  // Set up proper cleanup for the audio level simulation
+  useEffect(() => {
+    let interval: NodeJS.Timeout | undefined;
+
+    if (isListening) {
+      interval = setInterval(() => {
+        setAudioLevel(Math.random() * 0.8 + 0.2);
+      }, 200);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isListening]);
 
   const toggleChatInterface = () => {
     setIsTransitioning(true);
@@ -59,7 +76,8 @@ export default function Home() {
           <h1 className="text-xl font-light tracking-wide text-primary transition-all duration-300">
             AI Companion
           </h1>
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
+            <ThemeSwitcher />
             <Button
               variant="ghost"
               size="icon"
@@ -108,9 +126,9 @@ export default function Home() {
         </header>
 
         {/* Main Content Area with smooth transitions */}
-        <div className="flex-grow overflow-hidden flex items-center justify-center">
+        <div className="flex-grow overflow-hidden flex items-center justify-center relative">
           <div
-            className={`w-full transition-opacity duration-500 ease-in-out absolute ${showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+            className={`w-full transition-opacity duration-500 ease-in-out absolute inset-0 ${showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
             style={{ pointerEvents: showChatInterface ? "auto" : "none" }}
           >
             <ChatInterface
@@ -120,7 +138,7 @@ export default function Home() {
             />
           </div>
           <div
-            className={`w-full max-w-2xl mx-auto transition-opacity duration-500 ease-in-out absolute ${!showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+            className={`w-full max-w-2xl mx-auto transition-opacity duration-500 ease-in-out absolute inset-0 flex items-center justify-center ${!showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
             style={{ pointerEvents: !showChatInterface ? "auto" : "none" }}
           >
             <VoiceVisualizer

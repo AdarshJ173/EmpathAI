@@ -59,7 +59,8 @@ const VoiceVisualizer = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isListening, isAiSpeaking, audioLevel]);
+    // Fixed dependency array to include the generateBars function
+  }, [isListening, isAiSpeaking, audioLevel, bars]);
 
   const toggleListening = () => {
     if (isListening) {

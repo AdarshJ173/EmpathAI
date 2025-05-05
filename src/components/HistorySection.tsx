@@ -109,6 +109,15 @@ export default function HistorySection({
       return false;
     }
 
+    // Apply favorites filter
+    if (
+      filterType === "favorites" &&
+      conversation.id !== "1" &&
+      conversation.id !== "3"
+    ) {
+      return false;
+    }
+
     return true;
   });
 
@@ -181,9 +190,7 @@ export default function HistorySection({
 
         <TabsContent value="favorites" className="space-y-0">
           <ConversationList
-            conversations={filteredConversations.filter(
-              (c) => c.id === "1" || c.id === "3",
-            )}
+            conversations={filteredConversations}
             onSelect={handleSelectConversation}
             selectedId={selectedConversation?.id}
           />

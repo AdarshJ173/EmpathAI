@@ -10,7 +10,7 @@ type MessageType = {
   content: string;
   sender: "user" | "ai";
   timestamp: Date;
-  emotion?: "happy" | "sad" | "neutral" | "excited" | "concerned";
+  emotion?: string; // Allow any emotion string to match the parent component's implementation
 };
 
 type MessageDisplayProps = {

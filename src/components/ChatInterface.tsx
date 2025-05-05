@@ -88,7 +88,7 @@ const ChatInterface = ({
     }, 500);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSendMessage();
     }
@@ -100,16 +100,13 @@ const ChatInterface = ({
 
     if (newState) {
       onStartListening();
-    } else {
-      onStopListening();
-    }
 
-    // Simulate voice recording and processing
-    if (!isRecording) {
-      // Start recording simulation
+      // Simulate voice recording and processing
+      // Only start the simulation when we're turning recording ON
       setTimeout(() => {
         // Simulate end of recording and processing
         setIsRecording(false);
+        onStopListening(); // Make sure we call stop listening when recording ends
         const voiceText = "This is a simulated voice message.";
         setInputValue(voiceText);
 
@@ -143,6 +140,8 @@ const ChatInterface = ({
           }, 500);
         }, 500);
       }, 3000);
+    } else {
+      onStopListening();
     }
   };
 
