@@ -8,6 +8,9 @@ import {
   ArrowLeft,
   Clock,
   MessageSquare,
+  Star,
+  StarOff,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -23,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { ScrollArea } from "./ui/scroll-area";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Conversation {
   id: string;
@@ -31,6 +35,7 @@ interface Conversation {
   preview: string;
   emotions: string[];
   messages: number;
+  isFavorite?: boolean;
 }
 
 interface HistorySectionProps {
@@ -50,6 +55,7 @@ export default function HistorySection({
       preview: "I've been thinking about the project deadline coming up...",
       emotions: ["anxious", "hopeful"],
       messages: 12,
+      isFavorite: true,
     },
     {
       id: "2",
@@ -58,6 +64,7 @@ export default function HistorySection({
       preview: "I'm considering taking a short trip to the mountains...",
       emotions: ["excited", "relaxed"],
       messages: 8,
+      isFavorite: false,
     },
     {
       id: "3",
@@ -66,6 +73,7 @@ export default function HistorySection({
       preview: "The meeting with the client didn't go as expected...",
       emotions: ["frustrated", "determined"],
       messages: 15,
+      isFavorite: true,
     },
     {
       id: "4",
@@ -74,6 +82,7 @@ export default function HistorySection({
       preview: "I've been thinking about learning a new language...",
       emotions: ["motivated", "curious"],
       messages: 10,
+      isFavorite: false,
     },
     {
       id: "5",
@@ -82,6 +91,7 @@ export default function HistorySection({
       preview: "I've started a new workout routine and diet plan...",
       emotions: ["determined", "energetic"],
       messages: 18,
+      isFavorite: false,
     },
   ],
 }: HistorySectionProps) {
@@ -89,6 +99,18 @@ export default function HistorySection({
   const [selectedConversation, setSelectedConversation] =
     useState<Conversation | null>(null);
   const [filterType, setFilterType] = useState("all");
+  const [favoritedIds, setFavoritedIds] = useState<string[]>(
+    conversations.filter(c => c.isFavorite).map(c => c.id)
+  );
+
+  const toggleFavorite = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFavoritedIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(favId => favId !== id)
+        : [...prev, id]
+    );
+  };
 
   const filteredConversations = conversations.filter((conversation) => {
     // Apply search filter
@@ -112,8 +134,7 @@ export default function HistorySection({
     // Apply favorites filter
     if (
       filterType === "favorites" &&
-      conversation.id !== "1" &&
-      conversation.id !== "3"
+      !favoritedIds.includes(conversation.id)
     ) {
       return false;
     }
@@ -131,113 +152,183 @@ export default function HistorySection({
     onReturnToMain();
   };
 
+  // Extract the selected ID safely
+  const selectedId: string | null = selectedConversation ? selectedConversation.id : null;
+
   return (
-    <div className="w-full h-full bg-background flex flex-col p-4 md:p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={handleReturnToMain}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Conversation History</h1>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search conversations..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon">
-            <Calendar className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon">
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="all" className="w-full" onValueChange={setFilterType}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="all">All Conversations</TabsTrigger>
-          <TabsTrigger value="recent">Recent</TabsTrigger>
-          <TabsTrigger value="favorites">Favorites</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-0">
-          <ConversationList
-            conversations={filteredConversations}
-            onSelect={handleSelectConversation}
-            selectedId={selectedConversation?.id}
-          />
-        </TabsContent>
-
-        <TabsContent value="recent" className="space-y-0">
-          <ConversationList
-            conversations={filteredConversations}
-            onSelect={handleSelectConversation}
-            selectedId={selectedConversation?.id}
-          />
-        </TabsContent>
-
-        <TabsContent value="favorites" className="space-y-0">
-          <ConversationList
-            conversations={filteredConversations}
-            onSelect={handleSelectConversation}
-            selectedId={selectedConversation?.id}
-          />
-        </TabsContent>
-      </Tabs>
-
-      {/* Selected Conversation Detail */}
-      {selectedConversation && (
-        <div className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{selectedConversation.title}</CardTitle>
-              <CardDescription className="flex items-center gap-2">
-                <Clock className="h-4 w-4" /> {selectedConversation.date}
-                <Separator orientation="vertical" className="h-4" />
-                <MessageSquare className="h-4 w-4" />{" "}
-                {selectedConversation.messages} messages
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                {selectedConversation.preview}
-              </p>
-              <div className="flex gap-2 mt-4">
-                {selectedConversation.emotions.map((emotion) => (
-                  <Badge key={emotion} variant="secondary">
-                    {emotion}
-                  </Badge>
-                ))}
+    <div className="w-full h-full flex flex-col">
+      <AnimatePresence mode="wait">
+        {!selectedConversation ? (
+          <motion.div 
+            key="list-view"
+            className="w-full h-full flex flex-col p-3 md:p-5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={handleReturnToMain} className="h-8 w-8">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h1 className="text-xl font-semibold">Conversations</h1>
               </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedConversation(null)}
-              >
-                Back
+            </div>
+
+            {/* Search and Filter */}
+            <div className="flex gap-2 mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-9 h-9 bg-background"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <Calendar className="h-4 w-4" />
               </Button>
-              <Button
-                onClick={() => onSelectConversation(selectedConversation.id)}
-              >
-                Continue Conversation
+              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
+                <Filter className="h-4 w-4" />
               </Button>
-            </CardFooter>
-          </Card>
-        </div>
-      )}
+            </div>
+
+            {/* Tabs */}
+            <Tabs defaultValue="all" className="w-full" onValueChange={setFilterType}>
+              <TabsList className="mb-3 grid grid-cols-3 h-9">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="recent">Recent</TabsTrigger>
+                <TabsTrigger value="favorites">Favorites</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="data-[state=active]:h-[calc(100vh-12rem)]">
+                <ConversationList
+                  conversations={filteredConversations}
+                  onSelect={handleSelectConversation}
+                  selectedId={selectedId}
+                  favoritedIds={favoritedIds}
+                  onToggleFavorite={toggleFavorite}
+                />
+              </TabsContent>
+
+              <TabsContent value="recent" className="data-[state=active]:h-[calc(100vh-12rem)]">
+                <ConversationList
+                  conversations={filteredConversations}
+                  onSelect={handleSelectConversation}
+                  selectedId={selectedId}
+                  favoritedIds={favoritedIds}
+                  onToggleFavorite={toggleFavorite}
+                />
+              </TabsContent>
+
+              <TabsContent value="favorites" className="data-[state=active]:h-[calc(100vh-12rem)]">
+                <ConversationList
+                  conversations={filteredConversations}
+                  onSelect={handleSelectConversation}
+                  selectedId={selectedId}
+                  favoritedIds={favoritedIds}
+                  onToggleFavorite={toggleFavorite}
+                />
+              </TabsContent>
+            </Tabs>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="detail-view"
+            className="w-full h-full flex flex-col p-3 md:p-5"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setSelectedConversation(null)}
+              className="mb-4 w-fit flex items-center gap-1 text-muted-foreground hover:text-foreground pl-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to conversations</span>
+            </Button>
+            
+            <div className="flex-1 overflow-auto">
+              <Card className="border-none shadow-none bg-transparent">
+                <CardHeader className="px-1 pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-xl font-medium">{selectedConversation.title}</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => toggleFavorite(selectedConversation.id, e)}
+                    >
+                      {favoritedIds.includes(selectedConversation.id) ? (
+                        <Star className="h-4 w-4 fill-primary text-primary" />
+                      ) : (
+                        <StarOff className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <CardDescription className="flex items-center gap-3 text-sm mt-1">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" /> {selectedConversation.date}
+                    </span>
+                    <Separator orientation="vertical" className="h-3" />
+                    <span className="flex items-center gap-1.5">
+                      <MessageSquare className="h-3.5 w-3.5" /> {selectedConversation.messages} messages
+                    </span>
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="px-1">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {selectedConversation.preview}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-4">
+                    {selectedConversation.emotions.map((emotion) => (
+                      <Badge key={emotion} variant="secondary" className="font-normal text-xs">
+                        {emotion}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+                
+                <CardFooter className="flex justify-end px-1 pt-4">
+                  <Button
+                    onClick={() => onSelectConversation(selectedConversation.id)}
+                    className="text-sm h-9"
+                  >
+                    Continue Conversation
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              {/* Simulated messages for visual context - in a real app these would come from the API */}
+              <div className="mt-6 space-y-4 px-1">
+                <h3 className="text-sm font-medium mb-3">Conversation Highlights</h3>
+                <div className="space-y-4">
+                  {[1, 2, 3].map(i => (
+                    <Card key={i} className="bg-muted/40 border-none p-3">
+                      <p className="text-sm text-muted-foreground">
+                        {i % 2 === 0 ? "You: " : "EmpathAI: "}
+                        {i === 1 
+                          ? "I've been feeling overwhelmed with all the deadlines coming up this week."
+                          : i === 2 
+                            ? "I understand that feeling. What's your biggest concern about these deadlines?"
+                            : "I think it's the fear of not meeting expectations. I want to do quality work but there's so much to do."
+                        }
+                      </p>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -246,19 +337,25 @@ interface ConversationListProps {
   conversations: Conversation[];
   onSelect: (conversation: Conversation) => void;
   selectedId?: string | null;
+  favoritedIds: string[];
+  onToggleFavorite: (id: string, e: React.MouseEvent) => void;
 }
 
 function ConversationList({
   conversations,
   onSelect,
   selectedId,
+  favoritedIds,
+  onToggleFavorite
 }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium">No conversations found</h3>
-        <p className="text-muted-foreground">
+      <div className="flex flex-col items-center justify-center py-12 px-4 h-full">
+        <div className="rounded-full bg-muted/50 p-3 mb-4">
+          <MessageSquare className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <h3 className="text-base font-medium">No conversations found</h3>
+        <p className="text-muted-foreground text-sm text-center mt-1">
           Try adjusting your search or filters
         </p>
       </div>
@@ -266,35 +363,73 @@ function ConversationList({
   }
 
   return (
-    <ScrollArea className="h-[500px]">
-      <div className="space-y-4">
+    <ScrollArea className="h-full pr-1">
+      <div className="space-y-3 pb-4">
         {conversations.map((conversation) => (
-          <Card
+          <motion.div
             key={conversation.id}
-            className={`cursor-pointer transition-colors hover:bg-accent/50 ${selectedId === conversation.id ? "border-primary" : ""}`}
-            onClick={() => onSelect(conversation)}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
           >
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{conversation.title}</CardTitle>
-                <span className="text-xs text-muted-foreground">
-                  {conversation.date}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {conversation.preview}
-              </p>
-              <div className="flex gap-2 mt-3">
-                {conversation.emotions.map((emotion) => (
-                  <Badge key={emotion} variant="outline" className="text-xs">
-                    {emotion}
+            <Card
+              className={`
+                cursor-pointer transition-all group hover:bg-accent/40 
+                ${selectedId === conversation.id ? "border-primary" : "border-border"}
+              `}
+              onClick={() => onSelect(conversation)}
+            >
+              <CardHeader className="py-3 px-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="text-base font-medium">{conversation.title}</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      {conversation.date}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:ring-0"
+                      onClick={(e) => onToggleFavorite(conversation.id, e)}
+                    >
+                      {favoritedIds.includes(conversation.id) ? (
+                        <Star className="h-4 w-4 fill-primary text-primary" />
+                      ) : (
+                        <Star className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pb-3 px-4 pt-0">
+                <p className="text-xs text-muted-foreground line-clamp-2">
+                  {conversation.preview}
+                </p>
+                
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {conversation.emotions.map((emotion) => (
+                    <Badge 
+                      key={emotion} 
+                      variant="outline" 
+                      className="text-xs px-1.5 py-0 h-5 font-normal border-muted-foreground/30"
+                    >
+                      {emotion}
+                    </Badge>
+                  ))}
+                  <Badge 
+                    variant="outline" 
+                    className="text-xs px-1.5 py-0 h-5 font-normal border-muted-foreground/30 ml-auto"
+                  >
+                    <MessageSquare className="h-3 w-3 mr-1" />{conversation.messages}
                   </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
     </ScrollArea>

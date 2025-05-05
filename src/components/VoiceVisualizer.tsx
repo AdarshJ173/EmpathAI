@@ -9,6 +9,7 @@ interface VoiceVisualizerProps {
   onStartListening?: () => void;
   onStopListening?: () => void;
   audioLevel?: number;
+  isChatMode?: boolean;
 }
 
 const VoiceVisualizer = ({
@@ -17,6 +18,7 @@ const VoiceVisualizer = ({
   onStartListening = () => {},
   onStopListening = () => {},
   audioLevel = 0,
+  isChatMode = false,
 }: VoiceVisualizerProps) => {
   const toggleListening = () => {
     if (isListening) {
@@ -35,7 +37,7 @@ const VoiceVisualizer = ({
         role="button"
         aria-label={isListening ? "Stop listening" : "Start listening"}
       >
-        <div className="loader"></div>
+        <div className={`loader ${isChatMode ? 'scale-125' : ''}`}></div>
       </div>
 
       {/* Status indicator - more minimal */}

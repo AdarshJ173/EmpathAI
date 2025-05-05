@@ -5,7 +5,6 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card } from "./ui/card";
 import { Mic, Send, X } from "lucide-react";
-import VoiceVisualizer from "./VoiceVisualizer";
 import MessageDisplay from "./MessageDisplay";
 
 interface Message {
@@ -172,25 +171,8 @@ const ChatInterface = ({
   };
 
   return (
-    <div className="flex flex-col h-full w-full max-w-4xl mx-auto bg-background">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h1 className="text-2xl font-bold">AI Companion</h1>
-        <Button variant="outline" onClick={onViewHistory}>
-          View History
-        </Button>
-      </div>
-
+    <div className="flex flex-col h-full w-full bg-background">
       <div className="flex-1 overflow-hidden flex flex-col">
-        {/* Voice visualizer section */}
-        <div className="flex justify-center items-center p-6">
-          <VoiceVisualizer
-            isActive={isRecording || isAiSpeaking}
-            mode={
-              isRecording ? "recording" : isAiSpeaking ? "speaking" : "idle"
-            }
-          />
-        </div>
-
         {/* Messages section */}
         <div className="flex-1 overflow-y-auto px-4 py-2">
           <MessageDisplay messages={messages} />

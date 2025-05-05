@@ -7,14 +7,14 @@ import ChatInterface from "@/components/ChatInterface";
 import VoiceVisualizer from "@/components/VoiceVisualizer";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import HistorySection from "@/components/HistorySection";
-import { ThemeSwitcher } from "@/components/theme-switcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { motion } from "framer-motion";
 
 export default function Home() {
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const handleStartListening = () => {
     setIsListening(true);
@@ -61,33 +61,39 @@ export default function Home() {
   }, [isListening]);
 
   const toggleChatInterface = () => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setShowChatInterface(!showChatInterface);
-      setTimeout(() => setIsTransitioning(false), 300);
-    }, 300);
+    setShowChatInterface(!showChatInterface);
   };
 
   return (
-    <main className="flex min-h-screen h-screen max-h-screen flex-col items-center justify-between p-4 bg-background transition-colors duration-500 ease-in-out overflow-hidden">
-      <div className="w-full max-w-5xl flex flex-col h-full max-h-full">
-        {/* Header - more minimal */}
-        <header className="flex justify-between items-center py-6 px-2">
-          <h1 className="text-xl font-light tracking-wide text-primary transition-all duration-300">
-            AI Companion
-          </h1>
-          <div className="flex gap-3 items-center">
-            <ThemeSwitcher />
+    <main className={`flex min-h-screen h-screen max-h-screen flex-col items-center justify-between p-4 bg-background transition-colors duration-500 ease-in-out overflow-hidden ${showChatInterface ? 'split-active' : ''}`}>
+      <div className="w-full max-w-7xl flex flex-col h-full max-h-full">
+        {/* Refined header - ultra minimalistic */}
+        <header className="flex items-center py-4 px-1">
+          <div className="text-lg font-extralight tracking-wider text-primary transition-all duration-300 opacity-80 hover:opacity-100">
+            EmpathAI
+          </div>
+          
+          {/* Spacer to push items to sides */}
+          <div className="flex-1"></div>
+          
+          {/* Sign In Button */}
+          <button className="signin-button mr-4">
+            <div className="blob1"></div>
+            <div className="blob2"></div>
+            <div className="signin-inner">Sign In</div>
+          </button>
+          
+          <div className="flex gap-2 items-center">
+            <ThemeToggle />
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={toggleChatInterface}
-              className="relative rounded-full transition-all duration-300 hover:bg-accent/50"
-              disabled={isTransitioning}
+              className="relative h-8 w-8 p-0 rounded-full transition-all duration-300 hover:bg-accent/30"
             >
-              <MessageSquare className="h-5 w-5 transition-transform duration-300" />
+              <MessageSquare className="h-4 w-4 transition-transform duration-300" />
               {!showChatInterface && (
-                <span className="absolute top-0 right-0 h-2 w-2 bg-primary rounded-full animate-pulse" />
+                <span className="absolute top-0 right-0 h-1.5 w-1.5 bg-primary rounded-full animate-pulse" />
               )}
               <span className="sr-only">Toggle chat interface</span>
             </Button>
@@ -95,8 +101,8 @@ export default function Home() {
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="rounded-full transition-all duration-300 hover:bg-accent/50"
+                  size="sm"
+                  className="h-8 w-8 p-0 rounded-full transition-all duration-300 hover:bg-accent/30"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -106,7 +112,7 @@ export default function Home() {
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="h-5 w-5"
+                    className="h-4 w-4"
                   >
                     <path d="M3 12h18" />
                     <path d="M3 6h18" />
@@ -117,7 +123,7 @@ export default function Home() {
               </SheetTrigger>
               <SheetContent
                 side="right"
-                className="w-full sm:w-[400px] md:w-[600px] border-none"
+                className="w-full sm:w-[400px] md:w-[600px] border-none p-0"
               >
                 <HistorySection />
               </SheetContent>
@@ -125,21 +131,22 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Main Content Area with smooth transitions */}
-        <div className="flex-grow overflow-hidden flex items-center justify-center relative">
-          <div
-            className={`w-full transition-opacity duration-500 ease-in-out absolute inset-0 ${showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
-            style={{ pointerEvents: showChatInterface ? "auto" : "none" }}
-          >
-            <ChatInterface
-              isListening={isListening}
-              onStartListening={handleStartListening}
-              onStopListening={handleStopListening}
-            />
-          </div>
-          <div
-            className={`w-full max-w-2xl mx-auto transition-opacity duration-500 ease-in-out absolute inset-0 flex items-center justify-center ${!showChatInterface ? "opacity-100 z-10" : "opacity-0 z-0"}`}
-            style={{ pointerEvents: !showChatInterface ? "auto" : "none" }}
+        {/* Main Content Area with split-screen layout */}
+        <div className="flex-grow flex overflow-hidden">
+          {/* Left side - Always visible visualizer */}
+          <motion.div 
+            className="visualizer-container flex items-center justify-start pl-1"
+            initial={{ width: "100%" }}
+            animate={{ 
+              width: showChatInterface ? "70%" : "100%",
+            }}
+            transition={{ 
+              type: "spring",
+              stiffness: 400,
+              damping: 25,
+              mass: 0.8,
+              velocity: 2
+            }}
           >
             <VoiceVisualizer
               isListening={isListening}
@@ -147,8 +154,32 @@ export default function Home() {
               onStartListening={handleStartListening}
               onStopListening={handleStopListening}
               audioLevel={audioLevel}
+              isChatMode={showChatInterface}
             />
-          </div>
+          </motion.div>
+
+          {/* Right side - Chat interface */}
+          {showChatInterface && (
+            <motion.div 
+              className="h-full"
+              initial={{ width: 0, opacity: 0, x: 30 }}
+              animate={{ width: "100%", opacity: 1, x: 0 }}
+              exit={{ width: 0, opacity: 0, x: 50 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 400,
+                damping: 25,
+                mass: 0.8,
+                velocity: 2
+              }}
+            >
+              <ChatInterface
+                isListening={isListening}
+                onStartListening={handleStartListening}
+                onStopListening={handleStopListening}
+              />
+            </motion.div>
+          )}
         </div>
       </div>
     </main>
