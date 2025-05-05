@@ -9,8 +9,12 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import HistorySection from "@/components/HistorySection";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion } from "framer-motion";
+import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [showChatInterface, setShowChatInterface] = useState(false);
@@ -64,6 +68,10 @@ export default function Home() {
     setShowChatInterface(!showChatInterface);
   };
 
+  const goToDashboard = () => {
+    window.location.href = "/dashboard";
+  };
+
   return (
     <main className={`flex min-h-screen h-screen max-h-screen flex-col items-center justify-between p-4 bg-background transition-colors duration-500 ease-in-out overflow-hidden ${showChatInterface ? 'split-active' : ''}`}>
       <div className="w-full max-w-7xl flex flex-col h-full max-h-full">
@@ -76,12 +84,22 @@ export default function Home() {
           {/* Spacer to push items to sides */}
           <div className="flex-1"></div>
           
-          {/* Sign In Button */}
-          <button className="signin-button mr-4">
-            <div className="blob1"></div>
-            <div className="blob2"></div>
-            <div className="signin-inner">Sign In</div>
-          </button>
+          {/* Auth buttons */}
+          <div className="mr-4 flex items-center gap-3">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="outline" size="sm" className="rounded-full">
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <Button variant="outline" size="sm" onClick={goToDashboard}>
+                Dashboard
+              </Button>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
+          </div>
           
           <div className="flex gap-2 items-center">
             <ThemeToggle />
