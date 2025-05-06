@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Mic, MicOff, Volume2 } from "lucide-react";
+import { Mic, MicOff, Volume2, Keyboard } from "lucide-react";
+import { voiceRecognition, voiceSynthesis } from "@/lib/voice-recognition";
 
 interface VoiceVisualizerProps {
   isListening?: boolean;
@@ -10,6 +11,7 @@ interface VoiceVisualizerProps {
   onStopListening?: () => void;
   audioLevel?: number;
   isChatMode?: boolean;
+  usesFallbackMode?: boolean;
 }
 
 const VoiceVisualizer = ({
@@ -19,10 +21,63 @@ const VoiceVisualizer = ({
   onStopListening = () => {},
   audioLevel = 0,
   isChatMode = false,
+  usesFallbackMode = false,
 }: VoiceVisualizerProps) => {
+  const [visualizerSize, setVisualizerSize] = useState(100);
+  const [pulsing, setPulsing] = useState(false);
+  const pulseInterval = useRef<NodeJS.Timeout | null>(null);
+
+  // Effect to animate the visualizer based on audio level or AI speaking
+  useEffect(() => {
+    // Determine base size based on chat mode
+    const baseSize = isChatMode ? 75 : 100;
+    
+    if (isAiSpeaking) {
+      // Pulsing effect for AI speaking
+      if (!pulseInterval.current) {
+        setPulsing(true);
+        pulseInterval.current = setInterval(() => {
+          setVisualizerSize(baseSize + Math.random() * 30);
+        }, 150);
+      }
+    } else if (isListening) {
+      // Set size based on audio level when listening
+      const newSize = baseSize + (audioLevel * 50);
+      setVisualizerSize(newSize);
+      setPulsing(false);
+      
+      // Clear any existing pulse interval
+      if (pulseInterval.current) {
+        clearInterval(pulseInterval.current);
+        pulseInterval.current = null;
+      }
+    } else {
+      // Reset to base size when not active
+      setVisualizerSize(baseSize);
+      setPulsing(false);
+      
+      // Clear any existing pulse interval
+      if (pulseInterval.current) {
+        clearInterval(pulseInterval.current);
+        pulseInterval.current = null;
+      }
+    }
+
+    // Cleanup
+    return () => {
+      if (pulseInterval.current) {
+        clearInterval(pulseInterval.current);
+      }
+    };
+  }, [isListening, isAiSpeaking, audioLevel, isChatMode]);
+
   const toggleListening = () => {
+    // Don't allow toggling if AI is speaking
+    if (isAiSpeaking) return;
+    
     if (isListening) {
       onStopListening();
+      voiceSynthesis?.stop(); // Stop any ongoing speech
     } else {
       onStartListening();
     }
@@ -32,15 +87,31 @@ const VoiceVisualizer = ({
     <div className="flex flex-col items-center justify-center w-full max-w-xl mx-auto p-6 rounded-2xl transition-all duration-500 ease-in-out">
       {/* Clickable water drop visualizer */}
       <div 
-        className={`mb-10 cursor-pointer ${isListening ? 'active-visualizer' : ''}`}
+        className={`mb-10 cursor-pointer ${isListening ? 'active-visualizer' : ''} ${isAiSpeaking ? 'ai-speaking' : ''} ${pulsing ? 'pulsing' : ''} ${usesFallbackMode ? 'fallback-mode' : ''}`}
         onClick={toggleListening}
         role="button"
         aria-label={isListening ? "Stop listening" : "Start listening"}
+        style={{
+          pointerEvents: isAiSpeaking ? 'none' : 'auto', // Disable clicking when AI is speaking
+        }}
       >
-        <div className={`loader ${isChatMode ? 'scale-125' : ''}`}></div>
+        <div 
+          className={`loader ${isChatMode ? 'scale-90' : ''}`}
+          style={{
+            transform: `scale(${visualizerSize / 100})`,
+            transition: 'transform 0.2s ease-out',
+          }}
+        >
+          {/* Keyboard icon for fallback mode */}
+          {usesFallbackMode && isListening && (
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <Keyboard className="h-12 w-12 opacity-60" />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Status indicator - more minimal */}
+      {/* Status indicator */}
       <div className="mb-6 text-sm font-light tracking-wide text-center opacity-80 transition-opacity duration-300">
         {isListening ? (
           <span className="flex items-center justify-center text-primary transition-all duration-300">
@@ -48,7 +119,7 @@ const VoiceVisualizer = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
             </span>
-            Listening to you...
+            {usesFallbackMode ? "Ready for your message..." : "Listening to you..."}
           </span>
         ) : isAiSpeaking ? (
           <span className="flex items-center justify-center text-blue-400 transition-all duration-300">
@@ -57,10 +128,18 @@ const VoiceVisualizer = ({
           </span>
         ) : (
           <span className="text-muted-foreground transition-all duration-300">
-            Click the Orb to start conversation
+            Click the Orb to {usesFallbackMode ? "start" : "speak"}
           </span>
         )}
       </div>
+
+      {/* Fallback mode indicator */}
+      {usesFallbackMode && !isListening && !isAiSpeaking && (
+        <div className="text-xs text-muted-foreground mt-1 flex items-center">
+          <Keyboard className="h-3 w-3 mr-1" />
+          <span>Text input mode active</span>
+        </div>
+      )}
     </div>
   );
 };

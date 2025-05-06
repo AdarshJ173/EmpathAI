@@ -39,12 +39,14 @@
     "react-resizable-panels": "^2.1.7",
     "stripe": "^17.6.0",
     "tempo-devtools": "^2.0.103",
+    "uuid": "^11.1.0",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/uuid": "^10.0.0",
     "postcss": "^8",
     "tailwind-merge": "^2",
     "tailwindcss": "^3",

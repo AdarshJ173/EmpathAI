@@ -15,6 +15,7 @@ import SearchBar from "@/components/SearchBar";
 import { useUser } from "@clerk/nextjs";
 import ShinyText from '@/components/ShinyText';
 import Link from "next/link";
+import { voiceRecognition, voiceSynthesis, type AudioLevelCallback } from "@/lib/voice-recognition";
 
 export default function Home() {
   const router = useRouter();
@@ -24,54 +25,58 @@ export default function Home() {
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Check if voice recognition is using fallback mode
+  useEffect(() => {
+    if (voiceRecognition) {
+      setIsUsingFallback(voiceRecognition.isFallbackMode());
+    }
+  }, []);
+
+  // Set up speech synthesis
+  useEffect(() => {
+    // Monitor speech synthesis state
+    const checkSpeechState = setInterval(() => {
+      setIsAiSpeaking(!!voiceSynthesis?.isCurrentlySpeaking());
+    }, 200);
+
+    return () => {
+      clearInterval(checkSpeechState);
+    };
+  }, []);
 
   const handleStartListening = () => {
     setIsListening(true);
-    // In a real implementation, this would start voice recording
-    // and process audio levels
-    simulateAudioLevels();
+    
+    // Start audio level monitoring
+    voiceRecognition?.startAudioLevelMonitoring((level: number) => {
+      setAudioLevel(level);
+    });
   };
 
   const handleStopListening = () => {
     setIsListening(false);
     setAudioLevel(0);
-    // In a real implementation, this would stop voice recording
+    voiceRecognition?.stopListening();
   };
-
-  // Simulate changing audio levels for the visualizer
-  const simulateAudioLevels = () => {
-    if (!isListening) return;
-
-    const interval = setInterval(() => {
-      if (!isListening) {
-        clearInterval(interval);
-        return;
-      }
-      setAudioLevel(Math.random() * 0.8 + 0.2); // Random value between 0.2 and 1.0
-    }, 200);
-
-    // This cleanup function was incorrectly returning from the main function
-    // It should be set up with useEffect instead
-  };
-
-  // Set up proper cleanup for the audio level simulation
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined;
-
-    if (isListening) {
-      interval = setInterval(() => {
-        setAudioLevel(Math.random() * 0.8 + 0.2);
-      }, 200);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isListening]);
 
   const toggleChatInterface = () => {
     setShowChatInterface(!showChatInterface);
+  };
+
+  // Handle text input for fallback mode
+  const handleTextInput = (text: string) => {
+    if (isUsingFallback && isListening && voiceRecognition) {
+      voiceRecognition.simulateVoiceInput(text, () => {
+        // After simulation, wait a bit and stop listening
+        setTimeout(() => {
+          setIsListening(false);
+        }, 500);
+      });
+    }
   };
 
   // Close history panel when clicking outside
@@ -91,6 +96,14 @@ export default function Home() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showHistory]);
+
+  // Cleanup voice when component unmounts
+  useEffect(() => {
+    return () => {
+      voiceRecognition?.stopListening();
+      voiceSynthesis?.stop();
+    };
+  }, []);
 
   return (
     <main className={`flex min-h-screen h-screen max-h-screen flex-col items-center justify-between p-4 bg-background transition-colors duration-500 ease-in-out overflow-hidden ${showChatInterface ? 'split-active' : ''}`}>
@@ -198,6 +211,7 @@ export default function Home() {
               onStopListening={handleStopListening}
               audioLevel={audioLevel}
               isChatMode={showChatInterface}
+              usesFallbackMode={isUsingFallback}
             />
           </motion.div>
 
@@ -220,10 +234,20 @@ export default function Home() {
                 isListening={isListening}
                 onStartListening={handleStartListening}
                 onStopListening={handleStopListening}
+                onTextInput={handleTextInput}
+                usesFallbackMode={isUsingFallback}
               />
             </motion.div>
           )}
         </div>
+
+        {/* Fallback mode info tooltip - only show briefly when using fallback */}
+        {isUsingFallback && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-4 py-2 rounded-md text-sm animate-fade-in-out">
+            Using text-based input for voice interaction
+            <span className="text-xs block mt-1 opacity-70">(Click the orb and type your message)</span>
+          </div>
+        )}
       </div>
     </main>
   );
