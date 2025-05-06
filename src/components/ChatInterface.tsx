@@ -9,6 +9,7 @@ import MessageDisplay from "./MessageDisplay";
 import { voiceRecognition, voiceSynthesis } from "@/lib/voice-recognition";
 import { sendMessage, formatUserMessage, formatAssistantMessage } from "@/lib/ai-chat";
 import { Loader2 } from "lucide-react";
+import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   id: string;
@@ -16,10 +17,27 @@ interface Message {
   sender: "user" | "ai";
   timestamp: Date;
   emotion?: string;
+  emotionDetails?: {
+    primary: string;
+    confidence: number;
+    all?: { emotion: string; score: number; isPrimary: boolean }[];
+  };
+  sentiment?: {
+    primary: string;
+    strength: number;
+    predictions: {
+      Positive: number;
+      Neutral: number;
+      Negative: number;
+    };
+  };
+  keywords?: string[];
+  entities?: Array<{ text: string; type: string }>;
   apiMessage?: {
     role: 'user' | 'assistant' | 'system';
     content: string;
   };
+  isTypingIndicator?: boolean;
 }
 
 interface ChatInterfaceProps {
@@ -45,7 +63,26 @@ const ChatInterface = ({
       content: "Hello! How are you feeling today?",
       sender: "ai",
       timestamp: new Date(),
-      emotion: "neutral",
+      emotion: "supportive",
+      emotionDetails: {
+        primary: "supportive",
+        confidence: 0.9,
+        all: [
+          { emotion: "supportive", score: 0.8, isPrimary: true },
+          { emotion: "curious", score: 0.6, isPrimary: false },
+          { emotion: "optimism", score: 0.5, isPrimary: false }
+        ]
+      },
+      sentiment: {
+        primary: "positive",
+        strength: 0.7,
+        predictions: {
+          Positive: 0.7,
+          Neutral: 0.25,
+          Negative: 0.05
+        }
+      },
+      keywords: ["feeling", "today", "hello"],
       apiMessage: {
         role: 'assistant',
         content: "Hello! How are you feeling today?"
@@ -60,6 +97,7 @@ const ChatInterface = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const sendAudioRef = useRef<HTMLAudioElement | null>(null);
   const receiveAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [typingIndicatorId, setTypingIndicatorId] = useState<string | null>(null);
 
   // Initialize audio elements
   useEffect(() => {
@@ -128,20 +166,127 @@ const ChatInterface = ({
     // Play send sound
     playSendSound();
     
-    // Create and add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    // Create a message ID now so we can update it later
+    const messageId = Date.now().toString();
+    
+    // Add user message immediately to show in the UI (with temp analysis placeholder)
+    const initialUserMessage: Message = {
+      id: messageId,
       content: voiceText,
       sender: "user",
       timestamp: new Date(),
-      apiMessage: formatUserMessage(voiceText)
+      apiMessage: formatUserMessage(voiceText),
+      // Add default neutral emotion placeholder
+      emotionDetails: {
+        primary: 'neutral',
+        confidence: 0.5,
+        all: [{ emotion: 'neutral', score: 1.0, isPrimary: true }]
+      },
+      sentiment: {
+        primary: 'neutral',
+        strength: 0.5,
+        predictions: {
+          Positive: 0.33,
+          Neutral: 0.34,
+          Negative: 0.33
+        }
+      }
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, initialUserMessage]);
     setInputValue("");
     
+    // Show typing indicator immediately
+    const indicatorId = uuidv4();
+    setTypingIndicatorId(indicatorId);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: indicatorId,
+        content: "...",
+        sender: "ai",
+        timestamp: new Date(),
+        isTypingIndicator: true
+      } as Message
+    ]);
+
+    // Analyze the user's message for emotions and sentiment
+    try {
+      // Call the NLP API to analyze user message
+      const response = await fetch('/api/nlp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: initialUserMessage.content,
+          tasks: ['emotion', 'sentiment', 'keywords']
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        let userEmotionData = initialUserMessage.emotionDetails;
+        let userSentimentData = initialUserMessage.sentiment;
+        let userKeywords = [];
+        
+        if (data.results.emotion) {
+          userEmotionData = {
+            primary: data.results.emotion.predictions ? 
+              Object.entries(data.results.emotion.predictions).sort((a, b) => b[1] - a[1])[0][0] : 'neutral',
+            confidence: 0.8,
+            all: Object.entries(data.results.emotion.predictions || {}).map(([emotion, score]) => ({
+              emotion,
+              score: parseFloat((score as number).toFixed(3)),
+              isPrimary: false
+            })).sort((a, b) => b.score - a.score)
+          };
+          
+          // Mark primary emotion
+          if (userEmotionData.all.length > 0) {
+            userEmotionData.all[0].isPrimary = true;
+          }
+        }
+        
+        if (data.results.sentiment) {
+          const sentimentPredictions = data.results.sentiment.predictions || { Positive: 0.2, Neutral: 0.6, Negative: 0.2 };
+          const entries = Object.entries(sentimentPredictions);
+          const highestSentiment = entries.sort((a, b) => b[1] - a[1])[0];
+          
+          userSentimentData = {
+            primary: highestSentiment[0].toLowerCase(),
+            strength: Math.max(...Object.values(sentimentPredictions)) as number,
+            predictions: sentimentPredictions
+          };
+        }
+        
+        if (data.results.keywords) {
+          userKeywords = data.results.keywords.keywords || [];
+        }
+        
+        // Update the user message with actual emotion data
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? {
+                ...msg,
+                emotionDetails: userEmotionData,
+                sentiment: userSentimentData,
+                keywords: userKeywords
+              }
+            : msg
+        ));
+      }
+    } catch (error) {
+      console.error("Error analyzing voice message:", error);
+      // Continue without updating the analysis if it fails
+    }
+    
     // Get AI response
-    await getAIResponse([...messages, userMessage]);
+    await getAIResponse([...messages, initialUserMessage]);
+    
+    // Remove typing indicator after response
+    setTypingIndicatorId(null);
+    setMessages(prev => prev.filter(m => m.id !== indicatorId));
   };
 
   const handleSendMessage = async () => {
@@ -156,20 +301,127 @@ const ChatInterface = ({
     // Play send sound
     playSendSound();
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    // Create a message ID now so we can update it later
+    const messageId = Date.now().toString();
+    
+    // Add user message immediately to show in the UI (with temp analysis placeholder)
+    const initialUserMessage: Message = {
+      id: messageId,
       content: inputValue,
       sender: "user",
       timestamp: new Date(),
-      apiMessage: formatUserMessage(inputValue)
+      apiMessage: formatUserMessage(inputValue),
+      // Add default neutral emotion placeholder
+      emotionDetails: {
+        primary: 'neutral',
+        confidence: 0.5,
+        all: [{ emotion: 'neutral', score: 1.0, isPrimary: true }]
+      },
+      sentiment: {
+        primary: 'neutral',
+        strength: 0.5,
+        predictions: {
+          Positive: 0.33,
+          Neutral: 0.34,
+          Negative: 0.33
+        }
+      }
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, initialUserMessage]);
     setInputValue("");
     
+    // Show typing indicator immediately
+    const indicatorId = uuidv4();
+    setTypingIndicatorId(indicatorId);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: indicatorId,
+        content: "...",
+        sender: "ai",
+        timestamp: new Date(),
+        isTypingIndicator: true
+      } as Message
+    ]);
+
+    // Analyze the user's message for emotions and sentiment
+    try {
+      // Call the NLP API to analyze user message
+      const response = await fetch('/api/nlp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: initialUserMessage.content,
+          tasks: ['emotion', 'sentiment', 'keywords']
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        let userEmotionData = initialUserMessage.emotionDetails;
+        let userSentimentData = initialUserMessage.sentiment;
+        let userKeywords = [];
+        
+        if (data.results.emotion) {
+          userEmotionData = {
+            primary: data.results.emotion.predictions ? 
+              Object.entries(data.results.emotion.predictions).sort((a, b) => b[1] - a[1])[0][0] : 'neutral',
+            confidence: 0.8,
+            all: Object.entries(data.results.emotion.predictions || {}).map(([emotion, score]) => ({
+              emotion,
+              score: parseFloat((score as number).toFixed(3)),
+              isPrimary: false
+            })).sort((a, b) => b.score - a.score)
+          };
+          
+          // Mark primary emotion
+          if (userEmotionData.all.length > 0) {
+            userEmotionData.all[0].isPrimary = true;
+          }
+        }
+        
+        if (data.results.sentiment) {
+          const sentimentPredictions = data.results.sentiment.predictions || { Positive: 0.2, Neutral: 0.6, Negative: 0.2 };
+          const entries = Object.entries(sentimentPredictions);
+          const highestSentiment = entries.sort((a, b) => b[1] - a[1])[0];
+          
+          userSentimentData = {
+            primary: highestSentiment[0].toLowerCase(),
+            strength: Math.max(...Object.values(sentimentPredictions)) as number,
+            predictions: sentimentPredictions
+          };
+        }
+        
+        if (data.results.keywords) {
+          userKeywords = data.results.keywords.keywords || [];
+        }
+        
+        // Update the user message with actual emotion data
+        setMessages(prev => prev.map(msg => 
+          msg.id === messageId 
+            ? {
+                ...msg,
+                emotionDetails: userEmotionData,
+                sentiment: userSentimentData,
+                keywords: userKeywords
+              }
+            : msg
+        ));
+      }
+    } catch (error) {
+      console.error("Error analyzing user message:", error);
+      // Continue without updating the analysis if it fails
+    }
+    
     // Get AI response
-    await getAIResponse([...messages, userMessage]);
+    await getAIResponse([...messages, initialUserMessage]);
+    
+    // Remove typing indicator after response
+    setTypingIndicatorId(null);
+    setMessages(prev => prev.filter(m => m.id !== indicatorId));
   };
 
   const getAIResponse = async (messageHistory: Message[]) => {
@@ -184,16 +436,46 @@ const ChatInterface = ({
       // Send to AI API
       const aiResponse = await sendMessage(apiMessages);
       
+      // Check if the response contains an error
+      if (aiResponse.error) {
+        console.warn("AI API returned an error:", aiResponse.error);
+        
+        // The sendMessage function now returns a properly formatted error response
+        // with appropriate message and analysis data
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            content: aiResponse.message,
+            sender: "ai",
+            timestamp: new Date(),
+            emotion: aiResponse.analysis?.emotion?.primary || "concerned",
+            emotionDetails: aiResponse.analysis?.emotion,
+            sentiment: aiResponse.analysis?.sentiment,
+            keywords: aiResponse.analysis?.keywords || ["error", "temporary", "issue"],
+            apiMessage: formatAssistantMessage(aiResponse.message)
+          },
+        ]);
+        
+        return;
+      }
+      
       // Play receive sound
       playReceiveSound();
       
-      // Create AI message object
+      // Create AI message object with enhanced NLP information
       const aiMessageObj: Message = {
         id: Date.now().toString(),
         content: aiResponse.message,
         sender: "ai",
         timestamp: new Date(),
-        emotion: aiResponse.emotion,
+        // Basic emotion for backward compatibility
+        emotion: aiResponse.analysis?.emotion?.primary || aiResponse.emotion,
+        // Enhanced NLP data
+        emotionDetails: aiResponse.analysis?.emotion,
+        sentiment: aiResponse.analysis?.sentiment,
+        keywords: aiResponse.analysis?.keywords,
+        entities: aiResponse.analysis?.entities,
         apiMessage: formatAssistantMessage(aiResponse.message)
       };
 
@@ -209,18 +491,35 @@ const ChatInterface = ({
     } catch (error) {
       console.error("Error getting AI response:", error);
       
-      // Add error message
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          content: "Sorry, I had trouble responding. Please try again.",
-          sender: "ai",
-          timestamp: new Date(),
-          emotion: "concerned",
-          apiMessage: formatAssistantMessage("Sorry, I had trouble responding. Please try again.")
+      // Add error message with more informative content
+      const errorMessage = {
+        id: Date.now().toString(),
+        content: "I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.",
+        sender: "ai",
+        timestamp: new Date(),
+        emotion: "concerned",
+        emotionDetails: {
+          primary: "concerned",
+          confidence: 1.0,
+          all: [
+            { emotion: "concerned", score: 0.9, isPrimary: true },
+            { emotion: "supportive", score: 0.5, isPrimary: false }
+          ]
         },
-      ]);
+        sentiment: {
+          primary: "neutral",
+          strength: 0.5,
+          predictions: {
+            Positive: 0.3,
+            Neutral: 0.6,
+            Negative: 0.1
+          }
+        },
+        keywords: ["apologize", "difficulty", "temporary", "issue", "try", "again"],
+        apiMessage: formatAssistantMessage("I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.")
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
