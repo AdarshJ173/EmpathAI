@@ -161,50 +161,42 @@ export default function HistorySection({
         {!selectedConversation ? (
           <motion.div 
             key="list-view"
-            className="w-full h-full flex flex-col p-3 md:p-5"
+            className="w-full h-full flex flex-col p-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" onClick={handleReturnToMain} className="h-8 w-8">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <h1 className="text-xl font-semibold">Conversations</h1>
-              </div>
+            {/* Header - More compact */}
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-base font-semibold">Conversations</h1>
             </div>
 
-            {/* Search and Filter */}
-            <div className="flex gap-2 mb-4">
+            {/* Search and Filter - More compact */}
+            <div className="flex gap-2 mb-2">
               <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search..."
-                  className="pl-9 h-9 bg-background"
+                  placeholder="Search conversations..."
+                  className="pl-8 h-8 bg-background text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
-                <Calendar className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" className="h-9 w-9 p-0">
-                <Filter className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                <Filter className="h-3.5 w-3.5" />
               </Button>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs - More compact */}
             <Tabs defaultValue="all" className="w-full" onValueChange={setFilterType}>
-              <TabsList className="mb-3 grid grid-cols-3 h-9">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="recent">Recent</TabsTrigger>
-                <TabsTrigger value="favorites">Favorites</TabsTrigger>
+              <TabsList className="mb-2 grid grid-cols-3 h-8">
+                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                <TabsTrigger value="recent" className="text-xs">Recent</TabsTrigger>
+                <TabsTrigger value="favorites" className="text-xs">Favorites</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="all" className="data-[state=active]:h-[calc(100vh-12rem)]">
+              <TabsContent value="all" className="data-[state=active]:h-[calc(65vh-8rem)]">
                 <ConversationList
                   conversations={filteredConversations}
                   onSelect={handleSelectConversation}
@@ -214,7 +206,7 @@ export default function HistorySection({
                 />
               </TabsContent>
 
-              <TabsContent value="recent" className="data-[state=active]:h-[calc(100vh-12rem)]">
+              <TabsContent value="recent" className="data-[state=active]:h-[calc(65vh-8rem)]">
                 <ConversationList
                   conversations={filteredConversations}
                   onSelect={handleSelectConversation}
@@ -224,7 +216,7 @@ export default function HistorySection({
                 />
               </TabsContent>
 
-              <TabsContent value="favorites" className="data-[state=active]:h-[calc(100vh-12rem)]">
+              <TabsContent value="favorites" className="data-[state=active]:h-[calc(65vh-8rem)]">
                 <ConversationList
                   conversations={filteredConversations}
                   onSelect={handleSelectConversation}
@@ -238,7 +230,7 @@ export default function HistorySection({
         ) : (
           <motion.div 
             key="detail-view"
-            className="w-full h-full flex flex-col p-3 md:p-5"
+            className="w-full h-full flex flex-col p-2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -248,71 +240,72 @@ export default function HistorySection({
               variant="ghost" 
               size="sm" 
               onClick={() => setSelectedConversation(null)}
-              className="mb-4 w-fit flex items-center gap-1 text-muted-foreground hover:text-foreground pl-1"
+              className="mb-2 w-fit flex items-center gap-1 text-muted-foreground hover:text-foreground pl-1 text-xs"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to conversations</span>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back</span>
             </Button>
             
             <div className="flex-1 overflow-auto">
               <Card className="border-none shadow-none bg-transparent">
-                <CardHeader className="px-1 pb-2">
+                <CardHeader className="px-1 py-2">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-xl font-medium">{selectedConversation.title}</CardTitle>
+                    <CardTitle className="text-base font-medium">{selectedConversation.title}</CardTitle>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0"
+                      className="h-7 w-7 p-0"
                       onClick={(e) => toggleFavorite(selectedConversation.id, e)}
                     >
                       {favoritedIds.includes(selectedConversation.id) ? (
-                        <Star className="h-4 w-4 fill-primary text-primary" />
+                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                       ) : (
-                        <StarOff className="h-4 w-4 text-muted-foreground" />
+                        <StarOff className="h-3.5 w-3.5 text-muted-foreground" />
                       )}
                     </Button>
                   </div>
-                  <CardDescription className="flex items-center gap-3 text-sm mt-1">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" /> {selectedConversation.date}
+                  <CardDescription className="flex items-center gap-2 text-xs mt-1">
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {selectedConversation.date}
                     </span>
-                    <Separator orientation="vertical" className="h-3" />
-                    <span className="flex items-center gap-1.5">
-                      <MessageSquare className="h-3.5 w-3.5" /> {selectedConversation.messages} messages
+                    <Separator orientation="vertical" className="h-2.5" />
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3" /> {selectedConversation.messages} messages
                     </span>
                   </CardDescription>
                 </CardHeader>
                 
-                <CardContent className="px-1">
-                  <p className="text-muted-foreground text-sm leading-relaxed">
+                <CardContent className="px-1 py-1">
+                  <p className="text-muted-foreground text-xs leading-relaxed">
                     {selectedConversation.preview}
                   </p>
-                  <div className="flex flex-wrap gap-1.5 mt-4">
+                  <div className="flex flex-wrap gap-1 mt-2">
                     {selectedConversation.emotions.map((emotion) => (
-                      <Badge key={emotion} variant="secondary" className="font-normal text-xs">
+                      <Badge key={emotion} variant="secondary" className="font-normal text-[10px] px-1.5 py-0 h-4">
                         {emotion}
                       </Badge>
                     ))}
                   </div>
                 </CardContent>
                 
-                <CardFooter className="flex justify-end px-1 pt-4">
+                <CardFooter className="flex justify-end px-1 pt-2">
                   <Button
                     onClick={() => onSelectConversation(selectedConversation.id)}
-                    className="text-sm h-9"
+                    className="text-xs h-7"
+                    size="sm"
                   >
                     Continue Conversation
                   </Button>
                 </CardFooter>
               </Card>
               
-              {/* Simulated messages for visual context - in a real app these would come from the API */}
-              <div className="mt-6 space-y-4 px-1">
-                <h3 className="text-sm font-medium mb-3">Conversation Highlights</h3>
-                <div className="space-y-4">
+              {/* Simulated messages - compact view */}
+              <div className="mt-3 space-y-2 px-1">
+                <h3 className="text-xs font-medium mb-2">Conversation Highlights</h3>
+                <div className="space-y-2">
                   {[1, 2, 3].map(i => (
-                    <Card key={i} className="bg-muted/40 border-none p-3">
-                      <p className="text-sm text-muted-foreground">
+                    <Card key={i} className="bg-muted/40 border-none p-2">
+                      <p className="text-xs text-muted-foreground">
                         {i % 2 === 0 ? "You: " : "EmpathAI: "}
                         {i === 1 
                           ? "I've been feeling overwhelmed with all the deadlines coming up this week."
@@ -350,12 +343,12 @@ function ConversationList({
 }: ConversationListProps) {
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 h-full">
-        <div className="rounded-full bg-muted/50 p-3 mb-4">
-          <MessageSquare className="h-6 w-6 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-8 px-4 h-full">
+        <div className="rounded-full bg-muted/50 p-2 mb-3">
+          <MessageSquare className="h-5 w-5 text-muted-foreground" />
         </div>
-        <h3 className="text-base font-medium">No conversations found</h3>
-        <p className="text-muted-foreground text-sm text-center mt-1">
+        <h3 className="text-sm font-medium">No conversations found</h3>
+        <p className="text-muted-foreground text-xs text-center mt-1">
           Try adjusting your search or filters
         </p>
       </div>
@@ -364,7 +357,7 @@ function ConversationList({
 
   return (
     <ScrollArea className="h-full pr-1">
-      <div className="space-y-3 pb-4">
+      <div className="space-y-2 pb-2">
         {conversations.map((conversation) => (
           <motion.div
             key={conversation.id}
@@ -380,11 +373,11 @@ function ConversationList({
               `}
               onClick={() => onSelect(conversation)}
             >
-              <CardHeader className="py-3 px-4">
+              <CardHeader className="py-2 px-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <CardTitle className="text-base font-medium">{conversation.title}</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">
+                    <CardTitle className="text-sm font-medium">{conversation.title}</CardTitle>
+                    <CardDescription className="text-[10px] mt-0.5">
                       {conversation.date}
                     </CardDescription>
                   </div>
@@ -392,39 +385,39 @@ function ConversationList({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:ring-0"
+                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:ring-0"
                       onClick={(e) => onToggleFavorite(conversation.id, e)}
                     >
                       {favoritedIds.includes(conversation.id) ? (
-                        <Star className="h-4 w-4 fill-primary text-primary" />
+                        <Star className="h-3.5 w-3.5 fill-primary text-primary" />
                       ) : (
-                        <Star className="h-4 w-4" />
+                        <Star className="h-3.5 w-3.5" />
                       )}
                     </Button>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="pb-3 px-4 pt-0">
-                <p className="text-xs text-muted-foreground line-clamp-2">
+              <CardContent className="pb-2 px-3 pt-0">
+                <p className="text-[10px] text-muted-foreground line-clamp-2">
                   {conversation.preview}
                 </p>
                 
-                <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap gap-1 mt-1.5">
                   {conversation.emotions.map((emotion) => (
                     <Badge 
                       key={emotion} 
                       variant="outline" 
-                      className="text-xs px-1.5 py-0 h-5 font-normal border-muted-foreground/30"
+                      className="text-[9px] px-1 py-0 h-4 font-normal border-muted-foreground/30"
                     >
                       {emotion}
                     </Badge>
                   ))}
                   <Badge 
                     variant="outline" 
-                    className="text-xs px-1.5 py-0 h-5 font-normal border-muted-foreground/30 ml-auto"
+                    className="text-[9px] px-1 py-0 h-4 font-normal border-muted-foreground/30 ml-auto"
                   >
-                    <MessageSquare className="h-3 w-3 mr-1" />{conversation.messages}
+                    <MessageSquare className="h-2.5 w-2.5 mr-0.5" />{conversation.messages}
                   </Badge>
                 </div>
               </CardContent>

@@ -1,0 +1,221 @@
+/* From Uiverse.io by Lakshay-art */ 
+/* Namespace all selectors with the searchbar- prefix to avoid conflicts */
+.searchbar-component .white,
+.searchbar-component .border,
+.searchbar-component .darkBorderBg,
+.searchbar-component .glow {
+  max-height: 50px;
+  max-width: 214px;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  overflow: hidden;
+  z-index: -1;
+  /* Border Radius */
+  border-radius: 12px;
+  filter: blur(3px);
+}
+.searchbar-component .input {
+  background-color: #010201;
+  border: none;
+  width: 200px;
+  height: 36px;
+  border-radius: 10px;
+  color: white;
+  padding-inline: 45px 15px;
+  font-size: 14px;
+}
+.searchbar-component #searchbar-poda {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.searchbar-component .input::placeholder {
+  color: #c0b9c0;
+}
+
+.searchbar-component .input:focus {
+  outline: none;
+}
+
+/* Remove the input mask that created the black box */
+.searchbar-component #searchbar-input-mask {
+  display: none;
+}
+
+.searchbar-component #searchbar-pink-mask {
+  pointer-events: none;
+  width: 30px;
+  height: 20px;
+  position: absolute;
+  background: #cf30aa;
+  top: 8px;
+  left: 5px;
+  filter: blur(20px);
+  opacity: 0.8;
+  transition: all 2s;
+}
+.searchbar-component #searchbar-main:hover > #searchbar-pink-mask {
+  opacity: 0;
+}
+
+.searchbar-component .white {
+  max-height: 43px;
+  max-width: 207px;
+  border-radius: 10px;
+  filter: blur(2px);
+}
+
+.searchbar-component .white::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(83deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  filter: brightness(1.4);
+  background-image: conic-gradient(
+    rgba(0, 0, 0, 0) 0%,
+    #a099d8,
+    rgba(0, 0, 0, 0) 8%,
+    rgba(0, 0, 0, 0) 50%,
+    #dfa2da,
+    rgba(0, 0, 0, 0) 58%
+  );
+  transition: all 2s;
+}
+.searchbar-component .border {
+  max-height: 39px;
+  max-width: 203px;
+  border-radius: 11px;
+  filter: blur(0.5px);
+}
+.searchbar-component .border::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(70deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  filter: brightness(1.3);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(
+    #1c191c,
+    #402fb5 5%,
+    #1c191c 14%,
+    #1c191c 50%,
+    #cf30aa 60%,
+    #1c191c 64%
+  );
+  transition: all 2s;
+}
+.searchbar-component .darkBorderBg {
+  max-height: 45px;
+  max-width: 212px;
+}
+.searchbar-component .darkBorderBg::before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(82deg);
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-image: conic-gradient(
+    rgba(0, 0, 0, 0),
+    #18116a,
+    rgba(0, 0, 0, 0) 10%,
+    rgba(0, 0, 0, 0) 50%,
+    #6e1b60,
+    rgba(0, 0, 0, 0) 60%
+  );
+  transition: all 2s;
+}
+
+/* Make the glow effect more minimalistic and aesthetically pleasing */
+.searchbar-component .glow {
+  overflow: hidden;
+  filter: blur(15px);
+  opacity: 0.35; /* Further reduced for more subtlety */
+  max-height: 80px;
+  max-width: 250px;
+  top: -20%;
+  left: -10%; 
+  height: 140%;
+  width: 120%;
+  pointer-events: none;
+}
+.searchbar-component .glow:before {
+  content: "";
+  z-index: -2;
+  text-align: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(60deg);
+  position: absolute;
+  width: 500px; /* Further reduced size */
+  height: 500px;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  /* Even more subtle gradient */
+  background-image: conic-gradient(
+    transparent,
+    #402fb5 10%,
+    transparent 15%,
+    transparent 60%,
+    #cf30aa 68%, 
+    transparent 72%
+  );
+  transition: all 2s;
+}
+
+/* The remaining hover and animation effects */
+.searchbar-component #searchbar-poda:hover > .darkBorderBg::before,
+.searchbar-component #searchbar-poda:hover > .glow::before,
+.searchbar-component #searchbar-poda:hover > .white::before,
+.searchbar-component #searchbar-poda:hover > .border::before {
+  transform: translate(-50%, -50%) rotate(262deg);
+}
+
+.searchbar-component #searchbar-poda:focus-within > .darkBorderBg::before,
+.searchbar-component #searchbar-poda:focus-within > .glow::before,
+.searchbar-component #searchbar-poda:focus-within > .white::before,
+.searchbar-component #searchbar-poda:focus-within > .border::before {
+  transform: translate(-50%, -50%) rotate(442deg);
+  transition: all 4s;
+}
+
+/* Hide filter icon and its border */
+.searchbar-component #searchbar-filter-icon,
+.searchbar-component .filterBorder {
+  display: none;
+}
+
+@keyframes rotate {
+  100% {
+    transform: translate(-50%, -50%) rotate(450deg);
+  }
+}
+
+.searchbar-component #searchbar-main {
+  position: relative;
+}
+.searchbar-component #searchbar-search-icon {
+  position: absolute;
+  left: 15px;
+  top: 8px;
+  transform: scale(0.8);
+} 

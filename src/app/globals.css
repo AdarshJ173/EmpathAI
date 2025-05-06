@@ -341,16 +341,16 @@
 }
 
 /* Sign In Button */
-.signin-button {
+.button {
   cursor: pointer;
   font-size: 1rem;
-  border-radius: 16px;
+  border-radius: 12px;
   border: none;
   padding: 2px;
   background: radial-gradient(circle 80px at 80% -10%, #ffffff, #181b1b);
   position: relative;
 }
-.signin-button::after {
+.button::after {
   content: "";
   position: absolute;
   width: 65%;
@@ -364,9 +364,9 @@
 
 .blob1 {
   position: absolute;
-  width: 70px;
+  width: 50px;
   height: 100%;
-  border-radius: 16px;
+  border-radius: 12px;
   bottom: 0;
   left: 0;
   background: radial-gradient(
@@ -388,17 +388,16 @@
   z-index: 1;
 }
 
-.signin-inner {
+.inner {
   padding: 8px 16px;
-  border-radius: 14px;
+  border-radius: 10px;
   color: #fff;
   z-index: 3;
   position: relative;
   background: radial-gradient(circle 80px at 80% -50%, #777777, #0f1111);
   font-size: 0.875rem;
-  font-weight: 400;
 }
-.signin-inner::before {
+.inner::before {
   content: "";
   width: 100%;
   height: 100%;

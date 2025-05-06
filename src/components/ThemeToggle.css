@@ -62,4 +62,58 @@
 
 .input__check:checked + .slider:before {
   transform: translateX(1.5em);
+}
+
+.theme-toggle {
+  background: linear-gradient(145deg, #e6e6e6, #ffffff);
+  border: none;
+  outline: none;
+  backdrop-filter: blur(8px);
+}
+
+.dark .theme-toggle {
+  background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+}
+
+.theme-toggle:hover {
+  background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    0 4px 8px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.4);
+}
+
+.dark .theme-toggle:hover {
+  background: linear-gradient(145deg, #323232, #222222);
+  box-shadow: 
+    0 0 0 1px rgba(0, 0, 0, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+}
+
+.theme-toggle svg {
+  color: #666;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+  transition: all 0.3s ease;
+}
+
+.dark .theme-toggle svg {
+  color: #999;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+.theme-toggle:hover svg {
+  color: #333;
+  filter: 
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1))
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+}
+
+.dark .theme-toggle:hover svg {
+  color: #fff;
+  filter: 
+    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2))
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
 } 

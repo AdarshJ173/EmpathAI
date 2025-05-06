@@ -1,24 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import ChatInterface from "@/components/ChatInterface";
 import VoiceVisualizer from "@/components/VoiceVisualizer";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import HistorySection from "@/components/HistorySection";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
+import SearchBar from "@/components/SearchBar";
+import { useUser } from "@clerk/nextjs";
+import ShinyText from '@/components/ShinyText';
+import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useUser();
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const searchBarRef = useRef<HTMLDivElement>(null);
 
   const handleStartListening = () => {
     setIsListening(true);
@@ -68,41 +74,64 @@ export default function Home() {
     setShowChatInterface(!showChatInterface);
   };
 
-  const goToDashboard = () => {
-    window.location.href = "/dashboard";
-  };
+  // Close history panel when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchBarRef.current &&
+        !searchBarRef.current.contains(event.target as Node) &&
+        showHistory
+      ) {
+        setShowHistory(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showHistory]);
 
   return (
     <main className={`flex min-h-screen h-screen max-h-screen flex-col items-center justify-between p-4 bg-background transition-colors duration-500 ease-in-out overflow-hidden ${showChatInterface ? 'split-active' : ''}`}>
       <div className="w-full max-w-7xl flex flex-col h-full max-h-full">
         {/* Refined header - ultra minimalistic */}
         <header className="flex items-center py-4 px-1">
+          <div className="flex items-center gap-4">
           <div className="text-lg font-extralight tracking-wider text-primary transition-all duration-300 opacity-80 hover:opacity-100">
-            EmpathAI
+            <ShinyText text="EmpathAI" disabled={false} speed={3} className="text-lg font-extralight tracking-wider" />
+            </div>
+            <Link 
+              href="/about"
+              className="text-sm font-light opacity-60 hover:opacity-100 transition-opacity"
+            >
+              About
+            </Link>
           </div>
           
           {/* Spacer to push items to sides */}
           <div className="flex-1"></div>
           
-          {/* Auth buttons */}
-          <div className="mr-4 flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            {/* Auth buttons */}
             <SignedOut>
               <SignInButton mode="modal">
-                <Button variant="outline" size="sm" className="rounded-full">
-                  Sign In
-                </Button>
+                <button className="button scale-90 hover:scale-95 transition-transform duration-200">
+                  <div className="blob1"></div>
+                  <div className="blob2"></div>
+                  <div className="inner">Sign In</div>
+                </button>
               </SignInButton>
             </SignedOut>
             <SignedIn>
-              <Button variant="outline" size="sm" onClick={goToDashboard}>
-                Dashboard
-              </Button>
+              <span className="text-sm mr-2">
+                Hello, {user?.firstName || 'User'}
+              </span>
               <UserButton afterSignOutUrl="/" />
             </SignedIn>
-          </div>
-          
-          <div className="flex gap-2 items-center">
+            
             <ThemeToggle />
+            
             <Button
               variant="ghost"
               size="sm"
@@ -115,37 +144,33 @@ export default function Home() {
               )}
               <span className="sr-only">Toggle chat interface</span>
             </Button>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 rounded-full transition-all duration-300 hover:bg-accent/30"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
+            
+            {/* Search Bar */}
+            <div 
+              ref={searchBarRef}
+              className="relative hidden md:block"
+              onMouseEnter={() => setShowHistory(true)}
+              onClick={() => setShowHistory(true)}
+            >
+              <SearchBar />
+              
+              {/* History Panel that appears on search bar hover/click */}
+              <AnimatePresence>
+                {showHistory && (
+                  <motion.div 
+                    className="absolute top-full right-0 mt-2 w-[400px] bg-background rounded-md shadow-lg z-50 overflow-hidden max-h-[80vh]"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
                   >
-                    <path d="M3 12h18" />
-                    <path d="M3 6h18" />
-                    <path d="M3 18h18" />
-                  </svg>
-                  <span className="sr-only">View history</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="right"
-                className="w-full sm:w-[400px] md:w-[600px] border-none p-0"
-              >
-                <HistorySection />
-              </SheetContent>
-            </Sheet>
+                    <div className="h-[70vh] overflow-auto">
+                      <HistorySection />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
