@@ -122,23 +122,31 @@ const ChatInterface = ({
 
   // Handle voice recording when isRecording changes
   useEffect(() => {
-    if (isRecording && !usesFallbackMode) {
-      // Start voice recognition for native mode only
-      voiceRecognition?.startListening((transcript) => {
-        if (transcript.trim()) {
-          setInputValue(transcript);
-          // Auto-send the voice message
-          handleSendVoiceMessage(transcript);
-        }
-      });
-    } else if (!isRecording) {
+    if (isRecording) {
+      if (usesFallbackMode) {
+        // Focus input field for manual typing in fallback mode
+        inputRef.current?.focus();
+      } else {
+        // Start real-time listening with live transcription
+        voiceRecognition?.startRealTimeListening(
+          // Real-time transcript update
+          (transcript) => {
+            setInputValue(transcript);
+          },
+          // Auto-submit when pause detected
+          (finalTranscript) => {
+            if (finalTranscript.trim()) {
+              handleSendVoiceMessage(finalTranscript);
+            }
+          },
+          2000 // 2 second pause threshold
+        );
+      }
+    } else {
       // Stop voice recognition
-      voiceRecognition?.stopListening();
-    }
-
-    // For fallback mode, we'll focus the input field
-    if (isRecording && usesFallbackMode) {
-      inputRef.current?.focus();
+      if (!usesFallbackMode) {
+        voiceRecognition?.stopRealTimeListening();
+      }
     }
   }, [isRecording, usesFallbackMode]);
 
@@ -210,77 +218,6 @@ const ChatInterface = ({
       } as Message
     ]);
 
-    // Analyze the user's message for emotions and sentiment
-    try {
-      // Call the NLP API to analyze user message
-      const response = await fetch('/api/nlp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: initialUserMessage.content,
-          tasks: ['emotion', 'sentiment', 'keywords']
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        let userEmotionData = initialUserMessage.emotionDetails;
-        let userSentimentData = initialUserMessage.sentiment;
-        let userKeywords = [];
-        
-        if (data.results.emotion) {
-          userEmotionData = {
-            primary: data.results.emotion.predictions ? 
-              Object.entries(data.results.emotion.predictions).sort((a, b) => b[1] - a[1])[0][0] : 'neutral',
-            confidence: 0.8,
-            all: Object.entries(data.results.emotion.predictions || {}).map(([emotion, score]) => ({
-              emotion,
-              score: parseFloat((score as number).toFixed(3)),
-              isPrimary: false
-            })).sort((a, b) => b.score - a.score)
-          };
-          
-          // Mark primary emotion
-          if (userEmotionData.all.length > 0) {
-            userEmotionData.all[0].isPrimary = true;
-          }
-        }
-        
-        if (data.results.sentiment) {
-          const sentimentPredictions = data.results.sentiment.predictions || { Positive: 0.2, Neutral: 0.6, Negative: 0.2 };
-          const entries = Object.entries(sentimentPredictions);
-          const highestSentiment = entries.sort((a, b) => b[1] - a[1])[0];
-          
-          userSentimentData = {
-            primary: highestSentiment[0].toLowerCase(),
-            strength: Math.max(...Object.values(sentimentPredictions)) as number,
-            predictions: sentimentPredictions
-          };
-        }
-        
-        if (data.results.keywords) {
-          userKeywords = data.results.keywords.keywords || [];
-        }
-        
-        // Update the user message with actual emotion data
-        setMessages(prev => prev.map(msg => 
-          msg.id === messageId 
-            ? {
-                ...msg,
-                emotionDetails: userEmotionData,
-                sentiment: userSentimentData,
-                keywords: userKeywords
-              }
-            : msg
-        ));
-      }
-    } catch (error) {
-      console.error("Error analyzing voice message:", error);
-      // Continue without updating the analysis if it fails
-    }
-    
     // Get AI response
     await getAIResponse([...messages, initialUserMessage]);
     
@@ -292,9 +229,9 @@ const ChatInterface = ({
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // If in fallback mode and listening, treat this as a voice message
+    // If in fallback mode and listening, simulate real-time input
     if (usesFallbackMode && isRecording) {
-      onTextInput(inputValue);
+      voiceRecognition?.simulateRealTimeInput(inputValue);
       return;
     }
 
@@ -345,77 +282,6 @@ const ChatInterface = ({
       } as Message
     ]);
 
-    // Analyze the user's message for emotions and sentiment
-    try {
-      // Call the NLP API to analyze user message
-      const response = await fetch('/api/nlp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: initialUserMessage.content,
-          tasks: ['emotion', 'sentiment', 'keywords']
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        let userEmotionData = initialUserMessage.emotionDetails;
-        let userSentimentData = initialUserMessage.sentiment;
-        let userKeywords = [];
-        
-        if (data.results.emotion) {
-          userEmotionData = {
-            primary: data.results.emotion.predictions ? 
-              Object.entries(data.results.emotion.predictions).sort((a, b) => b[1] - a[1])[0][0] : 'neutral',
-            confidence: 0.8,
-            all: Object.entries(data.results.emotion.predictions || {}).map(([emotion, score]) => ({
-              emotion,
-              score: parseFloat((score as number).toFixed(3)),
-              isPrimary: false
-            })).sort((a, b) => b.score - a.score)
-          };
-          
-          // Mark primary emotion
-          if (userEmotionData.all.length > 0) {
-            userEmotionData.all[0].isPrimary = true;
-          }
-        }
-        
-        if (data.results.sentiment) {
-          const sentimentPredictions = data.results.sentiment.predictions || { Positive: 0.2, Neutral: 0.6, Negative: 0.2 };
-          const entries = Object.entries(sentimentPredictions);
-          const highestSentiment = entries.sort((a, b) => b[1] - a[1])[0];
-          
-          userSentimentData = {
-            primary: highestSentiment[0].toLowerCase(),
-            strength: Math.max(...Object.values(sentimentPredictions)) as number,
-            predictions: sentimentPredictions
-          };
-        }
-        
-        if (data.results.keywords) {
-          userKeywords = data.results.keywords.keywords || [];
-        }
-        
-        // Update the user message with actual emotion data
-        setMessages(prev => prev.map(msg => 
-          msg.id === messageId 
-            ? {
-                ...msg,
-                emotionDetails: userEmotionData,
-                sentiment: userSentimentData,
-                keywords: userKeywords
-              }
-            : msg
-        ));
-      }
-    } catch (error) {
-      console.error("Error analyzing user message:", error);
-      // Continue without updating the analysis if it fails
-    }
-    
     // Get AI response
     await getAIResponse([...messages, initialUserMessage]);
     
@@ -481,45 +347,59 @@ const ChatInterface = ({
 
       setMessages((prev) => [...prev, aiMessageObj]);
       
-      // Speak the AI response if we were in voice mode
-      if (isRecording || isListening) {
-        setIsAiSpeaking(true);
-        voiceSynthesis?.speak(aiResponse.message, () => {
+      // Speak the AI response using native Speech Synthesis
+      setIsAiSpeaking(true);
+      if (voiceSynthesis?.speakPriority) {
+        voiceSynthesis.speakPriority(aiResponse.message, () => {
           setIsAiSpeaking(false);
+          // Automatically start listening again for continuous conversation in voice mode
+          if ((isRecording || isListening) && !usesFallbackMode) {
+            setTimeout(() => {
+              onStartListening();
+            }, 500); // Small delay before listening again
+          }
         });
+      } else {
+        setIsAiSpeaking(false);
       }
     } catch (error) {
       console.error("Error getting AI response:", error);
       
-      // Add error message with more informative content
-      const errorMessage = {
-        id: Date.now().toString(),
-        content: "I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.",
-        sender: "ai",
-        timestamp: new Date(),
-        emotion: "concerned",
-        emotionDetails: {
-          primary: "concerned",
-          confidence: 1.0,
-          all: [
-            { emotion: "concerned", score: 0.9, isPrimary: true },
-            { emotion: "supportive", score: 0.5, isPrimary: false }
-          ]
-        },
-        sentiment: {
-          primary: "neutral",
-          strength: 0.5,
-          predictions: {
-            Positive: 0.3,
-            Neutral: 0.6,
-            Negative: 0.1
-          }
-        },
-        keywords: ["apologize", "difficulty", "temporary", "issue", "try", "again"],
-        apiMessage: formatAssistantMessage("I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.")
-      };
-      
-      setMessages((prev) => [...prev, errorMessage]);
+        // Add error message with more informative content
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          content: "I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.",
+          sender: "ai" as "ai",
+          timestamp: new Date(),
+          emotion: "concerned",
+          emotionDetails: {
+            primary: "concerned",
+            confidence: 1.0,
+            all: [
+              { emotion: "concerned", score: 0.9, isPrimary: true },
+              { emotion: "supportive", score: 0.5, isPrimary: false }
+            ]
+          },
+          sentiment: {
+            primary: "neutral",
+            strength: 0.5,
+            predictions: {
+              Positive: 0.3,
+              Neutral: 0.6,
+              Negative: 0.1
+            }
+          },
+          keywords: ["apologize", "difficulty", "temporary", "issue", "try", "again"],
+          apiMessage: formatAssistantMessage("I apologize for the difficulty. I'm experiencing a temporary issue with my connection. Please try again in a moment or check your internet connection.")
+        };
+        
+        setMessages((prev) => [...prev, errorMessage]);
+        
+        // Speak error message using native Speech Synthesis
+        setIsAiSpeaking(true);
+        voiceSynthesis?.speak(errorMessage.content, () => {
+          setIsAiSpeaking(false);
+        }, undefined, true);
     } finally {
       setIsLoading(false);
     }
@@ -536,6 +416,27 @@ const ChatInterface = ({
     setIsRecording(newState);
 
     if (newState) {
+      // Start real-time listening with auto-submission in chat interface
+      if (voiceRecognition && !voiceRecognition.isFallbackMode()) {
+        voiceRecognition.startRealTimeListening(
+          // Real-time transcript update - show live text in input field
+          (transcript) => {
+            setInputValue(transcript);
+          },
+          // Auto-submit when natural pause detected
+          async (finalTranscript) => {
+            if (finalTranscript.trim()) {
+              setInputValue(finalTranscript);
+              // Automatically send the message
+              setTimeout(() => {
+                handleSendMessage();
+              }, 100);
+            }
+          },
+          2000 // 2 second pause threshold
+        );
+      }
+      
       onStartListening();
       if (usesFallbackMode) {
         // Focus input field immediately in fallback mode
@@ -545,7 +446,7 @@ const ChatInterface = ({
       }
     } else {
       onStopListening();
-      voiceRecognition?.stopListening();
+      voiceRecognition?.stopRealTimeListening();
     }
   };
 
@@ -605,6 +506,19 @@ const ChatInterface = ({
           <div className="mt-2 text-xs text-center text-primary animate-pulse">
             <Keyboard className="h-3 w-3 inline mr-1" />
             Voice input active - type your message and press Enter
+          </div>
+        )}
+        
+        {/* AI speaking indicator */}
+        {isAiSpeaking && (
+          <div className="mt-3 flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-red-500/10 to-pink-500/10 rounded-lg border border-red-500/20">
+            <div className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce"></div>
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+            <span className="text-sm font-medium text-red-500">AI is speaking</span>
+            <span className="text-xs text-red-400/80 italic">(click orb to interrupt)</span>
           </div>
         )}
       </Card>

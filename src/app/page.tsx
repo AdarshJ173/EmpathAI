@@ -9,17 +9,15 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import HistorySection from "@/components/HistorySection";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { motion, AnimatePresence } from "framer-motion";
-import { SignInButton, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
-import { useUser } from "@clerk/nextjs";
 import ShinyText from '@/components/ShinyText';
 import Link from "next/link";
 import { voiceRecognition, voiceSynthesis, type AudioLevelCallback } from "@/lib/voice-recognition";
+import SignInButton from "@/components/SignInButton";
 
 export default function Home() {
   const router = useRouter();
-  const { user } = useUser();
   const [isListening, setIsListening] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [showChatInterface, setShowChatInterface] = useState(false);
@@ -51,6 +49,24 @@ export default function Home() {
   const handleStartListening = () => {
     setIsListening(true);
     
+    // Start real-time listening with auto-submission
+    if (voiceRecognition && !voiceRecognition.isFallbackMode()) {
+      voiceRecognition.startRealTimeListening(
+        // Real-time transcript update (optional for main page)
+        (transcript) => {
+          // Could show live transcript here if desired
+          console.log('Live transcript:', transcript);
+        },
+        // Auto-submit when natural pause detected
+        async (finalTranscript) => {
+          if (finalTranscript.trim()) {
+            await handleVoiceQuery(finalTranscript);
+          }
+        },
+        2000 // 2 second pause threshold
+      );
+    }
+    
     // Start audio level monitoring
     voiceRecognition?.startAudioLevelMonitoring((level: number) => {
       setAudioLevel(level);
@@ -60,7 +76,62 @@ export default function Home() {
   const handleStopListening = () => {
     setIsListening(false);
     setAudioLevel(0);
-    voiceRecognition?.stopListening();
+    voiceRecognition?.stopRealTimeListening();
+  };
+
+  // Handle voice query processing and AI response with TTS
+  const handleVoiceQuery = async (query: string) => {
+    try {
+      setIsListening(false);
+      setAudioLevel(0);
+      
+      console.log('Processing voice query:', query);
+      
+      // Get AI response
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: query }],
+          systemPrompt: `You are EmpathAI, an empathetic AI companion. Provide a warm, supportive response to the user's voice input. Keep responses conversational and engaging.`
+        })
+      });
+      
+      if (response.ok) {
+        const aiResponse = await response.json();
+        
+        // Speak the AI response immediately
+        setIsAiSpeaking(true);
+        if (voiceSynthesis?.speakPriority) {
+          voiceSynthesis.speakPriority(aiResponse.message, () => {
+            setIsAiSpeaking(false);
+            // Automatically start listening again for continuous conversation
+            if (!voiceRecognition?.isFallbackMode()) {
+              setTimeout(() => {
+                handleStartListening();
+              }, 500); // Small delay before listening again
+            }
+          });
+        }
+        
+        console.log('AI Response:', aiResponse.message);
+      } else {
+        throw new Error('Failed to get AI response');
+      }
+    } catch (error) {
+      console.error('Error processing voice query:', error);
+      
+      // Speak error message
+      setIsAiSpeaking(true);
+      voiceSynthesis?.speak(
+        "I'm sorry, I'm having trouble processing your request right now. Please try again.",
+        () => {
+          setIsAiSpeaking(false);
+        }
+      );
+    }
   };
 
   const toggleChatInterface = () => {
@@ -70,12 +141,7 @@ export default function Home() {
   // Handle text input for fallback mode
   const handleTextInput = (text: string) => {
     if (isUsingFallback && isListening && voiceRecognition) {
-      voiceRecognition.simulateVoiceInput(text, () => {
-        // After simulation, wait a bit and stop listening
-        setTimeout(() => {
-          setIsListening(false);
-        }, 500);
-      });
+      voiceRecognition.simulateRealTimeInput(text);
     }
   };
 
@@ -126,22 +192,13 @@ export default function Home() {
           <div className="flex-1"></div>
           
           <div className="flex items-center gap-3">
-            {/* Auth buttons */}
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="button scale-90 hover:scale-95 transition-transform duration-200">
-                  <div className="blob1"></div>
-                  <div className="blob2"></div>
-                  <div className="inner">Sign In</div>
-                </button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <span className="text-sm mr-2">
-                Hello, {user?.firstName || 'User'}
-              </span>
-              <UserButton afterSignOutUrl="/" />
-            </SignedIn>
+            {/* User greeting */}
+            <span className="text-sm mr-2">
+              Hello, User
+            </span>
+            
+            {/* Sign-in button */}
+            <SignInButton text="Sign In" />
             
             <ThemeToggle />
             

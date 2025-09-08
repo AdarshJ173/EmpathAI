@@ -84,8 +84,8 @@ const config = {
           "100%": { backgroundPosition: "-100%" },
         },
         "pulse-glow": {
-          "0%, 100%": { opacity: 0.6 },
-          "50%": { opacity: 0.8 },
+          "0%, 100%": { opacity: "0.6" },
+          "50%": { opacity: "0.8" },
         },
       },
       animation: {

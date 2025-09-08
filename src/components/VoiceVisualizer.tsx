@@ -72,8 +72,13 @@ const VoiceVisualizer = ({
   }, [isListening, isAiSpeaking, audioLevel, isChatMode]);
 
   const toggleListening = () => {
-    // Don't allow toggling if AI is speaking
-    if (isAiSpeaking) return;
+    // Don't allow toggling if AI is speaking, but allow interrupting
+    if (isAiSpeaking) {
+      // Interrupt AI speech and start listening immediately
+      voiceSynthesis?.stop();
+      onStartListening();
+      return;
+    }
     
     if (isListening) {
       onStopListening();
@@ -92,7 +97,7 @@ const VoiceVisualizer = ({
         role="button"
         aria-label={isListening ? "Stop listening" : "Start listening"}
         style={{
-          pointerEvents: isAiSpeaking ? 'none' : 'auto', // Disable clicking when AI is speaking
+          pointerEvents: 'auto', // Always allow clicking to interrupt AI or start listening
         }}
       >
         <div 
@@ -122,9 +127,14 @@ const VoiceVisualizer = ({
             {usesFallbackMode ? "Ready for your message..." : "Listening to you..."}
           </span>
         ) : isAiSpeaking ? (
-          <span className="flex items-center justify-center text-blue-400 transition-all duration-300">
-            <Volume2 className="h-3 w-3 mr-2 animate-pulse" />
-            AI Speaking...
+          <span className="flex items-center justify-center text-red-500 transition-all duration-300">
+            <div className="flex items-center gap-1 mr-2">
+              <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce"></div>
+              <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-1 h-1 bg-red-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+            <span className="font-medium">AI Speaking...</span> 
+            <span className="ml-2 text-xs text-red-400/70 italic">(click to interrupt)</span>
           </span>
         ) : (
           <span className="text-muted-foreground transition-all duration-300">

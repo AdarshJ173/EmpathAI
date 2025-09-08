@@ -18,6 +18,13 @@ class VoiceRecognition {
   private fallbackMode: boolean = false;
   private fallbackTimer: number | null = null;
   private fallbackText: string = "";
+  private notificationShown: boolean = false;
+  private currentTranscript: string = "";
+  private pauseTimer: number | null = null;
+  private pauseThreshold: number = 2000; // 2 seconds
+  private onTranscriptUpdate: ((transcript: string) => void) | null = null;
+  private onAutoSubmit: ((finalTranscript: string) => void) | null = null;
+  private isTranscribing: boolean = false;
 
   constructor() {
     this.initRecognition();
@@ -27,10 +34,12 @@ class VoiceRecognition {
     // Check for browser support and initialize appropriate implementation
     if (typeof window !== 'undefined') {
       // Try native implementations first
-      if ('SpeechRecognition' in window) {
-        this.recognition = new window.SpeechRecognition();
-      } else if ('webkitSpeechRecognition' in window) {
-        this.recognition = new window.webkitSpeechRecognition();
+      const win = window as any; // Temporarily cast window to any to access webkitSpeechRecognition
+
+      if ('SpeechRecognition' in win) {
+        this.recognition = new win.SpeechRecognition();
+      } else if ('webkitSpeechRecognition' in win) {
+        this.recognition = new win.webkitSpeechRecognition();
       } else {
         // Fallback mode for browsers without speech recognition support
         console.warn('Native speech recognition not supported - using fallback mode');
@@ -64,36 +73,57 @@ class VoiceRecognition {
       // Audio level is simulated in fallback mode
     });
 
-    // Show a notification that we're in fallback mode
-    if (!document.getElementById('speech-fallback-notification')) {
+    // Show notification only once per session and only for first-time users
+    if (!this.notificationShown && !document.getElementById('speech-fallback-notification')) {
+      this.notificationShown = true;
+      
       const notification = document.createElement('div');
       notification.id = 'speech-fallback-notification';
       notification.style.position = 'fixed';
-      notification.style.bottom = '10px';
-      notification.style.left = '50%';
-      notification.style.transform = 'translateX(-50%)';
-      notification.style.padding = '8px 12px';
-      notification.style.borderRadius = '4px';
-      notification.style.backgroundColor = 'rgba(0,0,0,0.7)';
+      notification.style.bottom = '20px';
+      notification.style.right = '20px';
+      notification.style.padding = '12px 16px';
+      notification.style.borderRadius = '8px';
+      notification.style.backgroundColor = 'rgba(59, 130, 246, 0.9)';
       notification.style.color = 'white';
-      notification.style.fontSize = '14px';
+      notification.style.fontSize = '13px';
+      notification.style.fontWeight = '500';
       notification.style.zIndex = '1000';
-      notification.style.transition = 'opacity 0.3s ease-in-out';
-      notification.innerText = 'Voice input active - type or click to enter message';
+      notification.style.transition = 'all 0.3s ease-in-out';
+      notification.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+      notification.style.cursor = 'pointer';
+      notification.style.maxWidth = '280px';
+      notification.innerText = 'Speech mode enabled - type your message when ready';
+      
+      // Add close button
+      const closeBtn = document.createElement('span');
+      closeBtn.innerHTML = '&times;';
+      closeBtn.style.marginLeft = '8px';
+      closeBtn.style.fontSize = '16px';
+      closeBtn.style.fontWeight = 'bold';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.style.opacity = '0.8';
+      notification.appendChild(closeBtn);
       
       document.body.appendChild(notification);
       
-      // Remove after 5 seconds
-      setTimeout(() => {
+      // Auto-dismiss after 3 seconds or on click
+      const dismissNotification = () => {
         if (notification.parentNode) {
           notification.style.opacity = '0';
+          notification.style.transform = 'translateY(10px)';
           setTimeout(() => {
             if (notification.parentNode) {
               notification.parentNode.removeChild(notification);
             }
           }, 300);
         }
-      }, 5000);
+      };
+      
+      notification.addEventListener('click', dismissNotification);
+      closeBtn.addEventListener('click', dismissNotification);
+      
+      setTimeout(dismissNotification, 3000);
     }
   }
 
@@ -128,7 +158,208 @@ class VoiceRecognition {
   }
 
   /**
-   * Start listening for voice input
+   * Start listening with real-time transcription and auto-submission
+   * @param onTranscriptUpdate Function to call with live transcript updates
+   * @param onAutoSubmit Function to call when natural pause is detected
+   * @param pauseThreshold Milliseconds to wait before auto-submitting (default: 2000)
+   */
+  public startRealTimeListening(
+    onTranscriptUpdate: (transcript: string) => void,
+    onAutoSubmit: (finalTranscript: string) => void,
+    pauseThreshold: number = 2000
+  ): boolean {
+    this.onTranscriptUpdate = onTranscriptUpdate;
+    this.onAutoSubmit = onAutoSubmit;
+    this.pauseThreshold = pauseThreshold;
+    this.currentTranscript = "";
+    this.isTranscribing = true;
+
+    if (!this.recognition) {
+      console.warn('Speech recognition is not available');
+      return false;
+    }
+
+    if (this.isListening) {
+      return true; // Already listening
+    }
+
+    if (this.fallbackMode) {
+      // In fallback mode, start listening but require manual input
+      this.isListening = true;
+      this.startAudioLevelMonitoring();
+      return true;
+    }
+
+    // Setup recognition for real-time transcription
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    
+    // Clear any previous event listeners
+    this.recognition.onresult = null;
+    this.recognition.onend = null;
+    this.recognition.onerror = null;
+    
+    this.recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+          this.currentTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      
+      // Update the live transcript display
+      const fullTranscript = this.currentTranscript + interimTranscript;
+      this.onTranscriptUpdate?.(fullTranscript);
+      
+      // If we have a final transcript, reset the pause timer
+      if (finalTranscript.trim()) {
+        this.resetPauseTimer();
+      }
+    };
+    
+    this.recognition.onend = () => {
+      if (this.isListening && this.isTranscribing) {
+        // Restart if we're supposed to be continuously listening
+        try {
+          this.recognition?.start();
+        } catch (error) {
+          console.warn('Error restarting recognition:', error);
+          this.handleAutoSubmit();
+        }
+      } else {
+        this.isListening = false;
+        this.stopAudioLevelMonitoring();
+      }
+    };
+    
+    this.recognition.onerror = (event: any) => {
+      console.warn('Speech recognition error:', event.error);
+      
+      switch (event.error) {
+        case 'not-allowed':
+        case 'service-not-allowed':
+          console.warn('Switching to fallback mode due to permission issues');
+          this.fallbackMode = true;
+          this.startFallbackRecognition();
+          break;
+          
+        case 'network':
+        case 'audio-capture':
+          console.warn('Audio error - switching to fallback mode');
+          this.fallbackMode = true;
+          this.startFallbackRecognition();
+          break;
+          
+        case 'no-speech':
+          // This is not really an error, just no speech detected
+          console.log('No speech detected, continuing to listen');
+          this.resetPauseTimer();
+          break;
+          
+        case 'aborted':
+          // Recognition was aborted (usually intentional)
+          this.handleAutoSubmit();
+          break;
+          
+        default:
+          console.warn(`Unhandled speech recognition error: ${event.error}`);
+          this.handleAutoSubmit();
+          break;
+      }
+    };
+
+    // Start recognition
+    try {
+      this.recognition.start();
+      this.isListening = true;
+      this.startAudioLevelMonitoring();
+      this.resetPauseTimer();
+      return true;
+    } catch (error) {
+      console.error('Error starting speech recognition:', error);
+      this.fallbackMode = true;
+      this.startFallbackRecognition();
+      return true;
+    }
+  }
+
+  /**
+   * Reset the pause timer for auto-submission
+   */
+  private resetPauseTimer() {
+    if (this.pauseTimer) {
+      clearTimeout(this.pauseTimer);
+    }
+    
+    this.pauseTimer = window.setTimeout(() => {
+      this.handleAutoSubmit();
+    }, this.pauseThreshold);
+  }
+
+  /**
+   * Handle auto-submission when pause is detected
+   */
+  private handleAutoSubmit() {
+    if (this.currentTranscript.trim() && this.onAutoSubmit) {
+      const finalText = this.currentTranscript.trim();
+      this.currentTranscript = "";
+      this.onAutoSubmit(finalText);
+    }
+    
+    // Clear the pause timer
+    if (this.pauseTimer) {
+      clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+    }
+  }
+
+  /**
+   * Stop real-time listening and clear transcription
+   */
+  public stopRealTimeListening() {
+    this.isTranscribing = false;
+    this.handleAutoSubmit(); // Submit any pending transcript
+    this.stopListening();
+    
+    // Clear callbacks
+    this.onTranscriptUpdate = null;
+    this.onAutoSubmit = null;
+    
+    // Clear timers
+    if (this.pauseTimer) {
+      clearTimeout(this.pauseTimer);
+      this.pauseTimer = null;
+    }
+  }
+
+  /**
+   * Simulate voice input for fallback mode
+   */
+  public simulateRealTimeInput(text: string) {
+    if (this.fallbackMode && this.isListening && this.onTranscriptUpdate) {
+      this.currentTranscript = text;
+      this.onTranscriptUpdate(text);
+      
+      // Auto-submit after a short delay in fallback mode
+      if (this.pauseTimer) {
+        clearTimeout(this.pauseTimer);
+      }
+      
+      this.pauseTimer = window.setTimeout(() => {
+        this.handleAutoSubmit();
+      }, 500); // Shorter delay for manual input
+    }
+  }
+
+  /**
+   * Start listening for voice input (legacy method)
    * @param callback Function to call with the transcript
    * @param continuousListening Whether to keep listening after the first result
    */
@@ -184,15 +415,47 @@ class VoiceRecognition {
       };
       
       this.recognition.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        // If the error is "not-allowed", switch to fallback mode
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          console.warn('Switching to fallback mode due to permission issues');
-          this.fallbackMode = true;
-          this.startFallbackRecognition();
-        } else {
-          this.isListening = false;
-          this.stopAudioLevelMonitoring();
+        console.warn('Speech recognition error:', event.error);
+        
+        // Handle different types of errors appropriately
+        switch (event.error) {
+          case 'not-allowed':
+          case 'service-not-allowed':
+            console.warn('Switching to fallback mode due to permission issues');
+            this.fallbackMode = true;
+            this.startFallbackRecognition();
+            break;
+            
+          case 'network':
+            console.warn('Network error in speech recognition - retrying or switching to fallback');
+            // For network errors, try to switch to fallback mode gracefully
+            this.fallbackMode = true;
+            this.startFallbackRecognition();
+            break;
+            
+          case 'audio-capture':
+            console.warn('Audio capture error - switching to fallback mode');
+            this.fallbackMode = true;
+            this.startFallbackRecognition();
+            break;
+            
+          case 'no-speech':
+            // This is not really an error, just no speech detected
+            console.log('No speech detected, continuing to listen');
+            break;
+            
+          case 'aborted':
+            // Recognition was aborted (usually intentional)
+            this.isListening = false;
+            this.stopAudioLevelMonitoring();
+            break;
+            
+          default:
+            // For other errors, log but continue in fallback mode
+            console.warn(`Unhandled speech recognition error: ${event.error} - switching to fallback mode`);
+            this.fallbackMode = true;
+            this.startFallbackRecognition();
+            break;
         }
       };
     }
@@ -357,17 +620,37 @@ class VoiceRecognition {
 // Create and export a singleton instance
 export const voiceRecognition = typeof window !== 'undefined' ? new VoiceRecognition() : null;
 
-// SpeechSynthesis for the AI's voice responses
+// Import and re-export the advanced TTS service
+import { nariDiaTTS as advancedTTS } from './nari-dia-tts';
+
+// Legacy VoiceSynthesis wrapper for backward compatibility
 export class VoiceSynthesis {
   private synthesis: SpeechSynthesis | null = null;
   private isSpeaking: boolean = false;
   private fallbackMode: boolean = false;
   private audio: HTMLAudioElement | null = null;
+  private preferredVoice: SpeechSynthesisVoice | null = null;
+  private voicesLoaded: boolean = false;
+  private voiceQueue: Array<{ text: string; onEnd?: () => void }> = [];
+  private isProcessingQueue: boolean = false;
+  private currentUtterance: SpeechSynthesisUtterance | null = null;
+  private useAdvancedTTS: boolean = false;
+  private ttsProviders: Array<{ name: string; available: boolean; quality: number }> = [
+    { name: 'responsiveVoice', available: false, quality: 8 },
+    { name: 'speechSynthesis', available: false, quality: 6 },
+    { name: 'naturalReaders', available: false, quality: 7 }
+  ];
 
   constructor() {
     if (typeof window !== 'undefined') {
       if ('speechSynthesis' in window) {
         this.synthesis = window.speechSynthesis;
+        this.initializeVoices();
+        
+        // Handle voice changes
+        if (this.synthesis.onvoiceschanged !== undefined) {
+          this.synthesis.onvoiceschanged = () => this.initializeVoices();
+        }
       } else {
         console.warn('Speech synthesis not supported - using fallback');
         this.fallbackMode = true;
@@ -375,13 +658,59 @@ export class VoiceSynthesis {
     }
   }
 
+  private initializeVoices() {
+    if (!this.synthesis) return;
+    
+    const voices = this.synthesis.getVoices();
+    if (voices.length > 0) {
+      this.voicesLoaded = true;
+      
+      // Find the best voice for fast, natural speech
+      // Priority: Google voices > Microsoft voices > Apple voices > Default
+      const preferredVoices = [
+        // Google voices (fastest and most natural)
+        voices.find(v => v.name.includes('Google') && v.lang.startsWith('en')),
+        // Microsoft voices (good quality, fast)
+        voices.find(v => v.name.includes('Microsoft') && v.lang.startsWith('en')),
+        // Apple voices
+        voices.find(v => v.name.includes('Samantha') || v.name.includes('Alex')),
+        // Any English voice
+        voices.find(v => v.lang.startsWith('en')),
+        // Fallback to first available
+        voices[0]
+      ].filter(Boolean);
+      
+      this.preferredVoice = preferredVoices[0] || null;
+      
+      if (this.preferredVoice) {
+        console.log('Selected voice for TTS:', this.preferredVoice.name);
+      }
+    }
+  }
+
   /**
-   * Speak a text message aloud
+   * Speak a text message aloud with optimized speed and quality
    * @param text The text to speak
    * @param onEnd Callback function when speech ends
    * @param voice Voice to use (optional)
+   * @param priority If true, interrupts current speech
    */
-  public speak(text: string, onEnd?: () => void, voice?: SpeechSynthesisVoice): boolean {
+  public async speak(text: string, onEnd?: () => void, voice?: SpeechSynthesisVoice, priority: boolean = false): Promise<boolean> {
+    // Use advanced TTS if available and enabled
+    if (this.useAdvancedTTS && advancedTTS) {
+      try {
+        if (priority) {
+          return await advancedTTS.speakPriority(text, {}, onEnd);
+        } else {
+          return await advancedTTS.speak(text, {}, onEnd);
+        }
+      } catch (error) {
+        console.warn('Advanced TTS failed, falling back to native:', error);
+        // Fall through to native implementation
+      }
+    }
+
+    // Fallback to native speech synthesis
     if (this.fallbackMode) {
       return this.fallbackSpeak(text, onEnd);
     }
@@ -391,29 +720,40 @@ export class VoiceSynthesis {
       return this.fallbackSpeak(text, onEnd);
     }
 
-    // Cancel any ongoing speech
-    this.stop();
+    // Add to queue if not priority and currently speaking
+    if (!priority && this.isSpeaking) {
+      this.voiceQueue.push({ text, onEnd });
+      return true;
+    }
+
+    // Cancel any ongoing speech if priority or queue processing
+    if (priority || !this.isSpeaking) {
+      this.stop();
+    }
+
+    return this.speakImmediate(text, onEnd, voice);
+  }
+
+  /**
+   * Speak text immediately with optimized settings for speed
+   */
+  private speakImmediate(text: string, onEnd?: () => void, voice?: SpeechSynthesisVoice): boolean {
+    if (!this.synthesis) return false;
 
     const utterance = new SpeechSynthesisUtterance(text);
+    this.currentUtterance = utterance;
     
-    // Set voice if provided
+    // Use preferred voice or provided voice
     if (voice) {
       utterance.voice = voice;
-    } else {
-      // Try to use a more natural voice if available
-      const voices = this.getVoices();
-      const preferredVoice = voices.find(v => 
-        v.name.includes('Google') || v.name.includes('Natural') ||
-        (v.name.includes('Female') && v.lang.includes('en'))
-      );
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
+    } else if (this.preferredVoice) {
+      utterance.voice = this.preferredVoice;
     }
     
-    utterance.rate = 1.0;
+    // Optimize for speed while maintaining clarity
+    utterance.rate = 1.1; // Slightly faster than normal
     utterance.pitch = 1.0;
+    utterance.volume = 0.9;
     
     // Set event handlers
     utterance.onstart = () => {
@@ -422,16 +762,24 @@ export class VoiceSynthesis {
     
     utterance.onend = () => {
       this.isSpeaking = false;
+      this.currentUtterance = null;
       if (onEnd) onEnd();
+      
+      // Process queue if there are pending items
+      this.processQueue();
     };
     
     utterance.onerror = (event) => {
       console.error('Speech synthesis error:', event);
       this.isSpeaking = false;
+      this.currentUtterance = null;
       if (onEnd) onEnd();
+      
+      // Process queue even on error
+      this.processQueue();
     };
     
-    // Start speaking
+    // Start speaking immediately
     try {
       this.synthesis.speak(utterance);
       return true;
@@ -439,6 +787,41 @@ export class VoiceSynthesis {
       console.error('Error with speech synthesis:', error);
       return this.fallbackSpeak(text, onEnd);
     }
+  }
+
+  /**
+   * Process the voice queue
+   */
+  private processQueue() {
+    if (this.isProcessingQueue || this.voiceQueue.length === 0 || this.isSpeaking) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    const nextItem = this.voiceQueue.shift();
+    
+    if (nextItem) {
+      setTimeout(() => {
+        this.isProcessingQueue = false;
+        this.speakImmediate(nextItem.text, nextItem.onEnd);
+      }, 100); // Small delay between queue items
+    } else {
+      this.isProcessingQueue = false;
+    }
+  }
+
+  /**
+   * Speak with priority (interrupts current speech)
+   */
+  public async speakPriority(text: string, onEnd?: () => void): Promise<boolean> {
+    return await this.speak(text, onEnd, undefined, true);
+  }
+
+  /**
+   * Clear the voice queue
+   */
+  public clearQueue() {
+    this.voiceQueue = [];
   }
 
   /**
@@ -486,7 +869,7 @@ export class VoiceSynthesis {
   }
 
   /**
-   * Stop any current speech
+   * Stop any current speech and clear queue
    */
   public stop() {
     if (this.synthesis && !this.fallbackMode) {
@@ -498,6 +881,12 @@ export class VoiceSynthesis {
       this.audio.pause();
       this.audio = null;
     }
+    
+    // Clear current utterance
+    this.currentUtterance = null;
+    
+    // Clear the queue
+    this.clearQueue();
     
     // Remove any fallback notifications
     const notifications = document.querySelectorAll('div[style*="AI responding"]');
@@ -519,10 +908,38 @@ export class VoiceSynthesis {
   }
 
   /**
+   * Get the preferred voice being used
+   */
+  public getPreferredVoice(): SpeechSynthesisVoice | null {
+    return this.preferredVoice;
+  }
+
+  /**
+   * Set a specific voice as preferred
+   */
+  public setPreferredVoice(voice: SpeechSynthesisVoice) {
+    this.preferredVoice = voice;
+  }
+
+  /**
    * Check if currently speaking
    */
   public isCurrentlySpeaking(): boolean {
     return this.isSpeaking;
+  }
+
+  /**
+   * Check if voices are loaded and ready
+   */
+  public areVoicesReady(): boolean {
+    return this.voicesLoaded;
+  }
+
+  /**
+   * Get queue length
+   */
+  public getQueueLength(): number {
+    return this.voiceQueue.length;
   }
 
   /**
@@ -532,6 +949,19 @@ export class VoiceSynthesis {
     // Always return true since we have fallback mode
     return true;
   }
+
+  /**
+   * Test the current voice setup
+   */
+  public testVoice(): boolean {
+    if (this.preferredVoice) {
+      return this.speak('Voice test successful', undefined, undefined, true);
+    }
+    return false;
+  }
 }
 
-export const voiceSynthesis = typeof window !== 'undefined' ? new VoiceSynthesis() : null; 
+export const voiceSynthesis = typeof window !== 'undefined' ? new VoiceSynthesis() : null;
+
+// Export advanced TTS for direct use
+export { nariDiaTTS as advancedTTS } from './nari-dia-tts';

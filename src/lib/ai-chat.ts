@@ -1,4 +1,5 @@
-// AI Chat Utility for OpenRouter API integration
+// AI Chat Utility for Gemini API integration
+// Updated from OpenRouter to use Google's Gemini API
 
 interface Message {
   role: 'user' | 'assistant' | 'system';

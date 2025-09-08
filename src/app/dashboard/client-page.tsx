@@ -4,21 +4,18 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
 
 export default function ClientDashboard() {
-  const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Redirect if not authenticated after Clerk has loaded
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in");
-    } else if (isLoaded) {
+    // Simple loading effect for UI consistency
+    const timer = setTimeout(() => {
       setLoading(false);
-    }
-  }, [isLoaded, isSignedIn, router]);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (loading) {
     return (
@@ -34,7 +31,7 @@ export default function ClientDashboard() {
         <h1 className="text-3xl font-extralight tracking-wide text-primary">Client Dashboard</h1>
         <div className="flex items-center gap-3">
           <p className="text-muted-foreground">
-            Welcome, {user?.firstName || "User"}
+            Welcome, User
           </p>
           <Link href="/">
             <Button variant="outline" size="sm">
@@ -50,11 +47,11 @@ export default function ClientDashboard() {
           <div className="space-y-4">
             <div className="flex justify-between items-center pb-2 border-b border-border">
               <span className="text-muted-foreground">Name</span>
-              <span className="font-medium">{user?.fullName || "User"}</span>
+              <span className="font-medium">User</span>
             </div>
             <div className="flex justify-between items-center pb-2 border-b border-border">
               <span className="text-muted-foreground">Email</span>
-              <span className="font-medium">{user?.primaryEmailAddress?.emailAddress || "No email"}</span>
+              <span className="font-medium">user@example.com</span>
             </div>
           </div>
         </div>
@@ -79,4 +76,4 @@ export default function ClientDashboard() {
       </div>
     </div>
   );
-} 
+}

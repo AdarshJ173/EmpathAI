@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { EmotionDetection } from '@/lib/nlp/emotionDetection';
-import { SentimentAnalysis } from '@/lib/nlp/sentimentAnalysis';
-import { KeywordExtractor } from '@/lib/nlp/keywordExtraction';
-import { NamedEntityRecognition } from '@/lib/nlp/namedEntityRecognition';
-import { POSTagging } from '@/lib/nlp/posTagging';
-import { findPrimaryEmotion, findPrimarySentiment, calculateConfidence, calculateSentimentStrength } from '@/lib/nlp/utils';
+import { 
+  POSTagging, 
+  KeywordExtractor, 
+  SentimentAnalysis, 
+  EmotionDetection, 
+  NamedEntityRecognition,
+  findPrimaryEmotion,
+  findPrimarySentiment,
+  calculateConfidence,
+  calculateSentimentStrength,
+  mergeOverlappingAnnotations,
+  Entity
+} from '@/lib/nlp';
 
 // Initialize NLP processors with singleton instances
 const emotionDetection = new EmotionDetection();
@@ -13,10 +20,15 @@ const keywordExtractor = new KeywordExtractor();
 const namedEntityRecognition = new NamedEntityRecognition();
 const posTagging = new POSTagging();
 
-// Replace the hardcoded API key with environment variable
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
-const OPENROUTER_REFERRER = process.env.NEXT_PUBLIC_OPENROUTER_REFERRER || "https://empathAI.com";
-const MODEL = "qwen/qwen-2.5-72b-instruct:free";
+// API keys and models (server-side only)
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
+// Keep Gemini as a fallback to avoid breaking existing flows
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
+const GEMINI_MODEL = "gemini-1.5-flash";
+
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "EmpathAI";
 
 // Fallback response to use when NLP processing fails
 const createFallbackResponse = (message: string) => {
@@ -41,104 +53,194 @@ const createFallbackResponse = (message: string) => {
 
 export async function POST(request: NextRequest) {
   try {
-    // Extract messages from request
-    const { messages } = await request.json();
-    
+    // Extract messages (and optional systemPrompt passthrough) from request
+    const { messages, systemPrompt } = await request.json();
+
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({
         ...createFallbackResponse("I received an invalid request format. Please try again with valid messages."),
         error: "Invalid request format"
       }, { status: 400 });
     }
-    
+
     // Validate that messages have the expected format
-    const invalidMessages = messages.filter(msg => !msg.role || !msg.content);
+    const invalidMessages = messages.filter((msg: any) => !msg.role || !msg.content);
     if (invalidMessages.length > 0) {
       return NextResponse.json({
         ...createFallbackResponse("Some messages in your request have an invalid format. Please ensure all messages have a role and content."),
         error: "Invalid message format"
       }, { status: 400 });
     }
-    
+
     // Extract the user's last message for analysis
-    const userMessages = messages.filter(m => m.role === 'user');
+    const userMessages = messages.filter((m: any) => m.role === 'user');
     const lastUserMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-    
+
     // Analyze the user's message if available
-    let userAnalysis = null;
+    let userAnalysis = null as any;
     if (lastUserMessage && lastUserMessage.content) {
       userAnalysis = await analyzeUserMessage(lastUserMessage.content);
     }
-    
-    // Format messages for the external API
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: msg.content,
-    }));
-    
-    // Create request options
-    let apiResponse;
-    try {
-      // Call external API for chat completion
-      apiResponse = await fetch(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
+
+    let aiMessage = '';
+
+    // Prefer Groq if configured; fallback to Gemini if not
+    if (GROQ_API_KEY && GROQ_API_KEY.trim() !== '') {
+      // Build OpenAI-compatible chat payload
+      const systemFromMessages = (messages.find((m: any) => m.role === 'system')?.content || '').trim();
+      const finalSystem = (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.trim()) || systemFromMessages || '';
+
+      const conversationMessages = messages
+        .filter((m: any) => m.role !== 'system')
+        .map((m: any) => ({ role: m.role, content: m.content }));
+
+      const openaiMessages = finalSystem
+        ? [{ role: 'system', content: finalSystem }, ...conversationMessages]
+        : conversationMessages;
+
+      let apiResponse: Response;
+      try {
+        apiResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": OPENROUTER_REFERRER
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
           },
           body: JSON.stringify({
-            model: MODEL,
-            messages: formattedMessages
+            model: GROQ_MODEL,
+            messages: openaiMessages,
+            temperature: 0.7,
+            top_p: 0.95,
+            max_tokens: 1024,
+            stream: false,
           }),
+        });
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => null as any);
+          const status = apiResponse.status;
+          const retryAfter = apiResponse.headers.get('retry-after') || undefined;
+          const errorMessage = errorData?.error?.message || `API returned status ${status}`;
+
+          console.error('Groq API error:', { status, errorMessage, retryAfter });
+
+          return NextResponse.json({
+            ...createFallbackResponse(
+              status === 429
+                ? 'I’m being rate-limited at the moment. Please wait a few seconds and try again.'
+                : 'I’m having trouble connecting to my systems. Please try again in a moment.'
+            ),
+            error: errorMessage,
+            retryAfter,
+          }, { status: 200 }); // Keep 200 so the frontend can display gracefully
         }
-      );
-      
-      if (!apiResponse.ok) {
-        // Handle API error
-        const errorData = await apiResponse.json().catch(() => null);
-        const errorMessage = errorData?.error?.message || `API returned status ${apiResponse.status}`;
-        console.error("API error:", errorMessage);
-        
+      } catch (fetchError) {
+        console.error('Groq fetch error:', fetchError);
         return NextResponse.json({
           ...createFallbackResponse(
-            "I'm having trouble connecting to my systems. Please try again in a moment."
+            "I'm having difficulty reaching my knowledge systems. Please check your connection and try again."
           ),
-          error: errorMessage
-        }, { status: 200 }); // Return 200 so the frontend can display the message
+          error: 'Network error'
+        }, { status: 200 });
       }
-    } catch (fetchError) {
-      console.error("Fetch error:", fetchError);
-      return NextResponse.json({
-        ...createFallbackResponse(
-          "I'm having difficulty reaching my knowledge systems. Please check your connection and try again."
-        ),
-        error: "Network error"
-      }, { status: 200 }); // Return 200 so the frontend can display the message
-    }
-    
-    // Parse the response data
-    let data;
-    try {
-      data = await apiResponse.json();
-      if (!data?.choices?.[0]?.message?.content) {
-        throw new Error("Invalid API response format");
+
+      // Parse the response
+      let data: any;
+      try {
+        data = await apiResponse.json();
+        aiMessage = data?.choices?.[0]?.message?.content || '';
+        if (!aiMessage) {
+          throw new Error('Invalid Groq response format: missing content');
+        }
+      } catch (parseError) {
+        console.error('Failed to parse Groq API response:', parseError);
+        return NextResponse.json({
+          ...createFallbackResponse('I received an unexpected response format. Please try again.'),
+          error: 'Failed to parse API response'
+        }, { status: 200 });
       }
-    } catch (parseError) {
-      console.error("Failed to parse API response:", parseError);
+    } else if (GEMINI_API_KEY && GEMINI_API_KEY.trim() !== '') {
+      // Fallback: original Gemini path, unchanged in behavior
+      const systemFromMessages = (messages.find((m: any) => m.role === 'system')?.content || '').trim();
+      const finalSystem = (systemPrompt && typeof systemPrompt === 'string' && systemPrompt.trim()) || systemFromMessages || '';
+      const conversationMessages = messages.filter((m: any) => m.role !== 'system');
+
+      let apiResponse: Response;
+      try {
+        const requestBody: any = {
+          contents: conversationMessages.map((msg: any) => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }]
+          })),
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          }
+        };
+
+        if (finalSystem) {
+          requestBody.systemInstruction = {
+            parts: [{ text: finalSystem }]
+          };
+        }
+
+        apiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json().catch(() => null);
+          const errorMessage = (errorData as any)?.error?.message || `API returned status ${apiResponse.status}`;
+          console.error('Gemini API error:', errorMessage);
+
+          return NextResponse.json({
+            ...createFallbackResponse(
+              'I’m having trouble connecting to my systems. Please try again in a moment.'
+            ),
+            error: errorMessage
+          }, { status: 200 });
+        }
+      } catch (fetchError) {
+        console.error('Gemini fetch error:', fetchError);
+        return NextResponse.json({
+          ...createFallbackResponse(
+            "I'm having difficulty reaching my knowledge systems. Please check your connection and try again."
+          ),
+          error: 'Network error'
+        }, { status: 200 });
+      }
+
+      try {
+        const data = await apiResponse.json();
+        aiMessage = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiMessage) {
+          throw new Error('Invalid Gemini response format');
+        }
+      } catch (parseError) {
+        console.error('Failed to parse Gemini API response:', parseError);
+        return NextResponse.json({
+          ...createFallbackResponse('I received an unexpected response format. Please try again.'),
+          error: 'Failed to parse API response'
+        }, { status: 200 });
+      }
+    } else {
+      // No configured provider
       return NextResponse.json({
-        ...createFallbackResponse("I received an unexpected response format. Please try again."),
-        error: "Failed to parse API response"
+        ...createFallbackResponse("I'm having trouble connecting to my systems. Please check the API configuration."),
+        error: 'Missing API key (GROQ_API_KEY or GEMINI_API_KEY)'
       }, { status: 200 });
     }
-    
-    const aiMessage = data.choices[0].message.content;
-    
+
     // Perform comprehensive NLP analysis on the AI's response with safeguards
-    let emotionResult, sentimentResult, keywordsResult, nerResult, posResult;
-    
+    let emotionResult: any, sentimentResult: any, keywordsResult: any, nerResult: any, posResult: any;
+
     try {
       [emotionResult, sentimentResult, keywordsResult, nerResult, posResult] = await Promise.all([
         emotionDetection.classify(aiMessage).catch(() => ({ predictions: { neutral: 1 }, annotations: [] })),
@@ -148,7 +250,7 @@ export async function POST(request: NextRequest) {
         posTagging.classify(aiMessage).catch(() => ({ tags: [] }))
       ]);
     } catch (nlpError) {
-      console.error("NLP processing error:", nlpError);
+      console.error('NLP processing error:', nlpError);
       // Continue with basic analysis if any part fails
       emotionResult = { predictions: { neutral: 1 }, annotations: [] };
       sentimentResult = { predictions: { Neutral: 1, Positive: 0, Negative: 0 }, annotations: [] };
@@ -156,13 +258,13 @@ export async function POST(request: NextRequest) {
       nerResult = { entities: [], annotations: [] };
       posResult = { tags: [] };
     }
-    
+
     // Enhanced emotion information with confidence scores
     const emotionInfo = enhanceEmotionInfo(emotionResult);
-    
+
     // Process sentiment with more detail
     const sentimentInfo = enhanceSentimentInfo(sentimentResult);
-    
+
     // Format the AI's response with enhanced NLP insights
     return NextResponse.json({
       message: aiMessage,
@@ -170,7 +272,7 @@ export async function POST(request: NextRequest) {
         emotion: emotionInfo,
         sentiment: sentimentInfo,
         keywords: keywordsResult.keywords || [],
-        entities: nerResult.entities?.map(e => ({ text: e.text, type: e.type })) || []
+        entities: nerResult.entities?.map((e: Entity) => ({ text: e.text, type: e.type })) || []
       },
       userAnalysis,
       annotations: {
@@ -186,11 +288,11 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error("Critical error in chat API route:", error);
+    console.error('Critical error in chat API route:', error);
     return NextResponse.json({
       ...createFallbackResponse("I apologize for the difficulty. I'm experiencing a temporary issue. Please try again in a few moments."),
-      error: "Internal server error"
-    }, { status: 200 }); // Return 200 so the frontend can display the message
+      error: 'Internal server error'
+    }, { status: 200 });
   }
 }
 
@@ -207,22 +309,22 @@ async function analyzeUserMessage(text: string) {
       keywordExtractor.generate(text, 3).catch(() => ({ keywords: [] })),
       namedEntityRecognition.classify(text).catch(() => ({ entities: [] }))
     ]);
-    
+
     // Calculate primary emotions and confidence metrics
     const primaryEmotion = findPrimaryEmotion(emotion.predictions);
     const emotionConfidence = calculateConfidence(emotion.predictions);
-    
+
     // Calculate primary sentiment and strength
     const primarySentiment = findPrimarySentiment(sentiment.predictions);
     const sentimentStrength = calculateSentimentStrength(sentiment.predictions);
-    
+
     // Format emotion data for UI display
     const formattedEmotions = Object.entries(emotion.predictions || {}).map(([emotion, score]) => ({
       emotion,
       score: parseFloat((score as number).toFixed(3)),
-      isPrimary: emotion.toLowerCase() === primaryEmotion
+      isPrimary: (emotion as string).toLowerCase() === primaryEmotion
     })).sort((a, b) => b.score - a.score);
-    
+
     return {
       emotion: {
         primary: primaryEmotion,
@@ -236,10 +338,10 @@ async function analyzeUserMessage(text: string) {
         strength: sentimentStrength
       },
       keywords: keywords.keywords || [],
-      entities: entities.entities?.map(e => ({ text: e.text, type: e.type })) || []
+      entities: entities.entities?.map((e: Entity) => ({ text: e.text, type: e.type })) || []
     };
   } catch (error) {
-    console.error("Error analyzing user message:", error);
+    console.error('Error analyzing user message:', error);
     return getDefaultAnalysis();
   }
 }
@@ -248,13 +350,13 @@ async function analyzeUserMessage(text: string) {
 function getDefaultAnalysis() {
   return {
     emotion: {
-      primary: "neutral",
+      primary: 'neutral',
       predictions: { neutral: 1 },
       confidence: 1,
       all: [{ emotion: 'neutral', score: 1, isPrimary: true }]
     },
     sentiment: {
-      primary: "neutral",
+      primary: 'neutral',
       predictions: { Neutral: 0.7, Positive: 0.2, Negative: 0.1 },
       strength: 0.3
     },
@@ -273,20 +375,20 @@ function enhanceEmotionInfo(emotionResult: any) {
       all: [{ emotion: 'neutral', score: 1, isPrimary: true }]
     };
   }
-  
+
   // Find the primary emotion (highest score)
   const primary = findPrimaryEmotion(emotionResult.predictions);
-  
+
   // Calculate confidence level
   const confidence = calculateConfidence(emotionResult.predictions);
-  
+
   // Format all emotions for UI display
   const allEmotions = Object.entries(emotionResult.predictions).map(([emotion, score]) => ({
     emotion,
     score: parseFloat((score as number).toFixed(3)),
-    isPrimary: emotion.toLowerCase() === primary
+    isPrimary: (emotion as string).toLowerCase() === primary
   })).sort((a, b) => b.score - a.score);
-  
+
   return {
     primary,
     confidence,
@@ -309,11 +411,11 @@ function enhanceSentimentInfo(sentimentResult: any) {
       }
     };
   }
-  
+
   const { Negative = 0, Neutral = 1, Positive = 0 } = sentimentResult.predictions;
   const primary = findPrimarySentiment(sentimentResult.predictions);
   const strength = calculateSentimentStrength(sentimentResult.predictions);
-  
+
   return {
     primary,
     strength,
@@ -330,35 +432,35 @@ function assessResponseComplexity(posResult: any) {
   if (!posResult || !posResult.tags || !Array.isArray(posResult.tags)) {
     return 'medium';
   }
-  
+
   try {
     const tags = posResult.tags;
-    
+
     // Count different parts of speech
-    const nounCount = tags.filter(tag => tag.includes('NN')).length;
-    const verbCount = tags.filter(tag => tag.includes('VB')).length;
-    const adjCount = tags.filter(tag => tag.includes('JJ')).length;
-    const advCount = tags.filter(tag => tag.includes('RB')).length;
-    
+    const nounCount = tags.filter((tag: string) => tag.includes('NN')).length;
+    const verbCount = tags.filter((tag: string) => tag.includes('VB')).length;
+    const adjCount = tags.filter((tag: string) => tag.includes('JJ')).length;
+    const advCount = tags.filter((tag: string) => tag.includes('RB')).length;
+
     // Calculate complexity score based on POS diversity and count
     const totalWords = tags.length;
     const diversityScore = (nounCount + verbCount + adjCount + advCount) / Math.max(1, totalWords);
-    
+
     // Include sentence length as a factor
     const wordCount = totalWords;
-    
+
     // Complex sentences often have more adjectives and adverbs relative to total words
     const descriptorRatio = (adjCount + advCount) / Math.max(1, totalWords);
-    
+
     // Calculate overall complexity
     const complexityScore = (diversityScore * 0.5) + (Math.min(wordCount / 100, 1) * 0.3) + (descriptorRatio * 0.2);
-    
+
     // Map to text labels
     if (complexityScore < 0.3) return 'simple';
     if (complexityScore < 0.6) return 'medium';
     return 'complex';
   } catch (error) {
-    console.error("Error assessing response complexity:", error);
+    console.error('Error assessing response complexity:', error);
     return 'medium';
   }
-} 
+}

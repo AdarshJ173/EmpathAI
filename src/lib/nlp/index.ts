@@ -1,10 +1,7 @@
-// Export all NLP modules
-export * from './posTagging';
-export * from './keywordExtraction';
-export * from './sentimentAnalysis';
-export * from './emotionDetection';
-export * from './namedEntityRecognition';
-export * from './utils';
+// Mock NLP interfaces and types for UI compatibility
+
+// Export mock implementations
+export * from './mock';
 
 // Types for NLP results
 export interface AnnotatedText {
@@ -13,9 +10,5 @@ export interface AnnotatedText {
   color: string | null;
 }
 
-// Re-export types for easier usage
-export type { POSResult } from './posTagging';
-export type { KeywordResult } from './keywordExtraction';
-export type { SentimentResult } from './sentimentAnalysis';
-export type { EmotionResult } from './emotionDetection';
-export type { NERResult, Entity } from './namedEntityRecognition'; 
+// Re-export types from mock implementation
+export type { POSResult, KeywordResult, SentimentResult, EmotionResult, NERResult, Entity } from './mock';
