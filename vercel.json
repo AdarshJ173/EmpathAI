@@ -8,12 +8,12 @@
     }
   },
   "env": {
-    "GEMINI_API_KEY": "@gemini_api_key",
-    "GROQ_API_KEY": "@groq_api_key",
-    "GROQ_MODEL": "@groq_model",
-    "NEXT_PUBLIC_APP_NAME": "@app_name",
-    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "@clerk_publishable_key",
-    "CLERK_SECRET_KEY": "@clerk_secret_key",
+    "GEMINI_API_KEY": "AIzaSyC_J9-4HvORWzJXYPCK00hsEU5cx2z4DPE",
+    "GROQ_API_KEY": "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",
+    "GROQ_MODEL": "llama-3.3-70b-versatile",
+    "NEXT_PUBLIC_APP_NAME": "EmpathAI",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctd29tYmF0LTQ2LmNsZXJrLmFjY291bnRzLmRldiQ",
+    "CLERK_SECRET_KEY": "sk_test_nNuvZDI859xeUE9G8pp5N8pdiiJL2xv0ehaWD0PQVK",
     "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
     "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
