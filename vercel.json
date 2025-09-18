@@ -13,12 +13,6 @@
     "GROQ_MODEL": "llama-3.3-70b-versatile",
     "NEXT_PUBLIC_APP_NAME": "EmpathAI",
     "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_ZXhjaXRpbmctd29tYmF0LTQ2LmNsZXJrLmFjY291bnRzLmRldiQ",
-    "CLERK_SECRET_KEY": "sk_test_nNuvZDI859xeUE9G8pp5N8pdiiJL2xv0ehaWD0PQVK",
-    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
-    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
-    "VOICE_RESPONSE_RATE": "@voice_response_rate",
-    "VOICE_RESPONSE_VOLUME": "@voice_response_volume",
-    "VOICE_RESPONSE_PITCH": "@voice_response_pitch"
+    "CLERK_SECRET_KEY": "sk_test_nNuvZDI859xeUE9G8pp5N8pdiiJL2xv0ehaWD0PQVK"
   }
 }
