@@ -1,0 +1,24 @@
+{
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "GROQ_API_KEY": "@groq_api_key",
+    "GROQ_MODEL": "@groq_model",
+    "NEXT_PUBLIC_APP_NAME": "@app_name",
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "@clerk_publishable_key",
+    "CLERK_SECRET_KEY": "@clerk_secret_key",
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "VOICE_RESPONSE_RATE": "@voice_response_rate",
+    "VOICE_RESPONSE_VOLUME": "@voice_response_volume",
+    "VOICE_RESPONSE_PITCH": "@voice_response_pitch"
+  }
+}

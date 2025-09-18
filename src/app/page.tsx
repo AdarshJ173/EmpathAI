@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Command } from "lucide-react";
 import ChatInterface from "@/components/ChatInterface";
 import VoiceVisualizer from "@/components/VoiceVisualizer";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -15,6 +15,7 @@ import ShinyText from '@/components/ShinyText';
 import Link from "next/link";
 import { voiceRecognition, voiceSynthesis, type AudioLevelCallback } from "@/lib/voice-recognition";
 import SignInButton from "@/components/SignInButton";
+import DashboardDropdown from "@/components/DashboardDropdown";
 
 export default function Home() {
   const router = useRouter();
@@ -24,14 +25,18 @@ export default function Home() {
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [isMac, setIsMac] = useState(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Check if voice recognition is using fallback mode
+  // Check if voice recognition is using fallback mode and platform
   useEffect(() => {
     if (voiceRecognition) {
       setIsUsingFallback(voiceRecognition.isFallbackMode());
     }
+    
+    // Detect if user is on Mac
+    setIsMac(navigator.platform.toLowerCase().includes('mac'));
   }, []);
 
   // Set up speech synthesis
@@ -134,9 +139,9 @@ export default function Home() {
     }
   };
 
-  const toggleChatInterface = () => {
-    setShowChatInterface(!showChatInterface);
-  };
+  const toggleChatInterface = useCallback(() => {
+    setShowChatInterface(prev => !prev);
+  }, []);
 
   // Handle text input for fallback mode
   const handleTextInput = (text: string) => {
@@ -163,6 +168,24 @@ export default function Home() {
     };
   }, [showHistory]);
 
+  // Keyboard shortcut handling with useCallback to prevent stale closure
+  const handleKeyboardShortcut = useCallback((event: KeyboardEvent) => {
+    // Check for Ctrl+/ (Windows/Linux) or Cmd+/ (Mac)
+    if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+      event.preventDefault();
+      console.log('Keyboard shortcut triggered, current chat state:', showChatInterface);
+      toggleChatInterface();
+    }
+  }, [toggleChatInterface, showChatInterface]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyboardShortcut);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyboardShortcut);
+    };
+  }, [handleKeyboardShortcut]);
+
   // Cleanup voice when component unmounts
   useEffect(() => {
     return () => {
@@ -186,6 +209,7 @@ export default function Home() {
             >
               About
             </Link>
+            <DashboardDropdown />
           </div>
           
           {/* Spacer to push items to sides */}
@@ -198,7 +222,7 @@ export default function Home() {
             </span>
             
             {/* Sign-in button */}
-            <SignInButton text="Sign In" />
+            <SignInButton />
             
             <ThemeToggle />
             
@@ -297,6 +321,41 @@ export default function Home() {
             </motion.div>
           )}
         </div>
+
+        {/* Keyboard Shortcut Indicator Pad - Always visible, positioned on left */}
+        <motion.div
+          className="absolute bottom-16 left-6 z-10"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3, delay: 1 }}
+        >
+          <motion.div
+            className="group cursor-pointer"
+            onClick={toggleChatInterface}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="bg-background/85 backdrop-blur-md border border-border/40 rounded-lg px-3 py-2 shadow-md hover:shadow-lg transition-all duration-300 hover:bg-background/95">
+              <div className="flex items-center gap-2 text-muted-foreground/80 group-hover:text-foreground transition-colors">
+                <div className="flex items-center gap-1">
+                  {/* Command/Ctrl Key */}
+                  <div className="px-1.5 py-0.5 bg-muted/40 rounded text-[10px] font-mono font-medium min-w-[20px] text-center">
+                    {isMac ? '⌘' : 'Ctrl'}
+                  </div>
+                  <span className="text-[10px]">+</span>
+                  {/* Slash Key */}
+                  <div className="px-1.5 py-0.5 bg-muted/40 rounded text-[10px] font-mono font-medium min-w-[16px] text-center">
+                    /
+                  </div>
+                </div>
+                <MessageSquare className="w-3 h-3" />
+              </div>
+              <div className="text-[9px] text-muted-foreground/60 mt-0.5 text-center group-hover:text-muted-foreground/80 transition-colors">
+                {showChatInterface ? 'Close Chat' : 'Open Chat'}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
 
         {/* Fallback mode info tooltip - only show briefly when using fallback */}
         {isUsingFallback && (

@@ -57,38 +57,7 @@ const ChatInterface = ({
   onTextInput = () => {},
   usesFallbackMode = false,
 }: ChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! How are you feeling today?",
-      sender: "ai",
-      timestamp: new Date(),
-      emotion: "supportive",
-      emotionDetails: {
-        primary: "supportive",
-        confidence: 0.9,
-        all: [
-          { emotion: "supportive", score: 0.8, isPrimary: true },
-          { emotion: "curious", score: 0.6, isPrimary: false },
-          { emotion: "optimism", score: 0.5, isPrimary: false }
-        ]
-      },
-      sentiment: {
-        primary: "positive",
-        strength: 0.7,
-        predictions: {
-          Positive: 0.7,
-          Neutral: 0.25,
-          Negative: 0.05
-        }
-      },
-      keywords: ["feeling", "today", "hello"],
-      apiMessage: {
-        role: 'assistant',
-        content: "Hello! How are you feeling today?"
-      }
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(isListening);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -183,22 +152,7 @@ const ChatInterface = ({
       content: voiceText,
       sender: "user",
       timestamp: new Date(),
-      apiMessage: formatUserMessage(voiceText),
-      // Add default neutral emotion placeholder
-      emotionDetails: {
-        primary: 'neutral',
-        confidence: 0.5,
-        all: [{ emotion: 'neutral', score: 1.0, isPrimary: true }]
-      },
-      sentiment: {
-        primary: 'neutral',
-        strength: 0.5,
-        predictions: {
-          Positive: 0.33,
-          Neutral: 0.34,
-          Negative: 0.33
-        }
-      }
+      apiMessage: formatUserMessage(voiceText)
     };
 
     setMessages((prev) => [...prev, initialUserMessage]);
@@ -219,7 +173,7 @@ const ChatInterface = ({
     ]);
 
     // Get AI response
-    await getAIResponse([...messages, initialUserMessage]);
+    await getAIResponse([...messages, initialUserMessage], messageId);
     
     // Remove typing indicator after response
     setTypingIndicatorId(null);
@@ -247,22 +201,7 @@ const ChatInterface = ({
       content: inputValue,
       sender: "user",
       timestamp: new Date(),
-      apiMessage: formatUserMessage(inputValue),
-      // Add default neutral emotion placeholder
-      emotionDetails: {
-        primary: 'neutral',
-        confidence: 0.5,
-        all: [{ emotion: 'neutral', score: 1.0, isPrimary: true }]
-      },
-      sentiment: {
-        primary: 'neutral',
-        strength: 0.5,
-        predictions: {
-          Positive: 0.33,
-          Neutral: 0.34,
-          Negative: 0.33
-        }
-      }
+      apiMessage: formatUserMessage(inputValue)
     };
 
     setMessages((prev) => [...prev, initialUserMessage]);
@@ -283,14 +222,14 @@ const ChatInterface = ({
     ]);
 
     // Get AI response
-    await getAIResponse([...messages, initialUserMessage]);
+    await getAIResponse([...messages, initialUserMessage], messageId);
     
     // Remove typing indicator after response
     setTypingIndicatorId(null);
     setMessages(prev => prev.filter(m => m.id !== indicatorId));
   };
 
-  const getAIResponse = async (messageHistory: Message[]) => {
+  const getAIResponse = async (messageHistory: Message[], userMessageId?: string) => {
     setIsLoading(true);
     
     try {
@@ -302,6 +241,30 @@ const ChatInterface = ({
       // Send to AI API
       const aiResponse = await sendMessage(apiMessages);
       
+      // If we have userAnalysis, attach it to the last user message we sent
+      if (userMessageId && aiResponse.userAnalysis) {
+        const ua = aiResponse.userAnalysis as any;
+        setMessages(prev => prev.map(m =>
+          m.id === userMessageId
+            ? {
+                ...m,
+                emotionDetails: ua.emotion ? {
+                  primary: ua.emotion.primary,
+                  confidence: ua.emotion.confidence,
+                  all: ua.emotion.all || []
+                } : m.emotionDetails,
+                sentiment: ua.sentiment ? {
+                  primary: ua.sentiment.primary,
+                  strength: ua.sentiment.strength,
+                  predictions: ua.sentiment.predictions
+                } : m.sentiment,
+                keywords: (ua.keywords as string[]) || m.keywords,
+                entities: (ua.entities as any[]) || m.entities
+              }
+            : m
+        ));
+      }
+
       // Check if the response contains an error
       if (aiResponse.error) {
         console.warn("AI API returned an error:", aiResponse.error);
@@ -329,6 +292,30 @@ const ChatInterface = ({
       // Play receive sound
       playReceiveSound();
       
+      // Attach user analysis again (in case of success path)
+      if (userMessageId && aiResponse.userAnalysis) {
+        const ua = aiResponse.userAnalysis as any;
+        setMessages(prev => prev.map(m =>
+          m.id === userMessageId
+            ? {
+                ...m,
+                emotionDetails: ua.emotion ? {
+                  primary: ua.emotion.primary,
+                  confidence: ua.emotion.confidence,
+                  all: ua.emotion.all || []
+                } : m.emotionDetails,
+                sentiment: ua.sentiment ? {
+                  primary: ua.sentiment.primary,
+                  strength: ua.sentiment.strength,
+                  predictions: ua.sentiment.predictions
+                } : m.sentiment,
+                keywords: (ua.keywords as string[]) || m.keywords,
+                entities: (ua.entities as any[]) || m.entities
+              }
+            : m
+        ));
+      }
+
       // Create AI message object with enhanced NLP information
       const aiMessageObj: Message = {
         id: Date.now().toString(),

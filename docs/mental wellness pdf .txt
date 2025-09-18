@@ -1,0 +1,90 @@
+PROPOSAL REPORT
+Generative AI for Youth Mental Wellness
+GenAI Exchange Hackathon
+1. Problem Statement
+Mental health issues among youth are rising at an alarming pace. However:
+• Many hesitate to approach therapists due to stigma or fear of judgment.
+• Therapy for conditions like Obsessive-Compulsive Disorder (OCD) happens only in controlled
+office settings, leaving youth without support in their real-world triggers.
+• Continuous, real-time guidance outside therapy is missing, creating a gap between
+professional help and everyday struggles.
+There is an urgent need for an AI-powered solution that provides empathetic companionship,
+therapy reinforcement, and proactive monitoring—all accessible 24×7.
+2. Solution Overview
+We propose a two-layered AI platform that combines:
+1. EmpathAI – an emotional support companion for anyone hesitant to seek therapy.
+2. OCD Support Module – a structured, therapist-integrated tool providing both short-term and
+long-term assistance.
+Together, these create a hybrid ecosystem that is reactive (responding to emotional needs and OCD
+urges) and proactive (predicting stress cycles using wearable integration).
+3. Key Features
+1. EmpathAI – Emotional Expression Companion
+• Target Audience: Youth who feel uncomfortable seeking therapy.
+• Provides a safe, AI-powered space for free emotional expression.
+• Acts as a judgment-free listener to help users release stress and gain clarity.
+• Can serve as the first step toward professional help.
+2. OCD Support Module – Therapy-Integrated Tool
+a) Long-Term ERP Support
+• Tracks triggers and arranges them into a hierarchy.
+• Provides gradual exposure with timed delays before compulsions.
+• Delay time is systematically increased to build resistance.
+• Helps replicate and reinforce ERP (Exposure and Response Prevention) outside therapy
+sessions.
+b) Short-Term (Crisis Mode)
+For overwhelming urges, users can choose:
+• Reassurance Mode
+o Used when obsessions and compulsions are logically connected.
+o Provides rational explanations and logical counterpoints.
+o Extends from EmpathAI chat, but specialized for OCD cases.
+• SOS Mode (for non-logical obsessions & compulsions)
+o Distract Me: Redirects attention via:
+▪ Sensory games
+▪ Calming visual timers
+▪ Grounding activities (“name 5 things you see around you”)
+o Work Mode:
+▪ Subtle pop-up overlay on the user’s screen.
+▪ Shows motivational nudges, calming messages, or task reminders.
+▪ Helps the user redirect from obsession to ongoing work.
+c) Therapist Portal
+• Secure dashboard for therapists.
+• Tracks:
+o Compulsion frequency
+o ERP progress (delay times, trigger exposure success)
+o SOS/Reassurance usage patterns
+• Enables data-backed personalization of therapy.
+d.)Predictive Wellness with Wearables (Fitbit Integration)
+• Data Sources: Heart rate, HRV, stress, activity, sleep.
+• AI Cycle Detection:
+o HR spike + HRV drop → possible obsession onset
+o Repetitive motion → compulsion
+o HR stabilization → relief
+• Advantages:
+➢ Captures physiological changes that indicate stress, obsessions, or
+compulsions—even if the user does not consciously report them.
+➢ Provides early warnings before, during, or after an obsessive
+episode, based on body signals.
+➢ Ensures support is available even when users feel too overwhelmed
+or hesitant to share.
+➢ Bridges the gap between subjective self-reporting and objective
+biometric detection.
+• Outputs:
+o Daily AI-generated Wellness Score (progress vs. past self).
+o Therapist dashboard showing trends over time.
+e) Daily AI Wellness Score
+• Personalized mental health progress tracker.
+• Encourages self-reflection and positive reinforcement.
+• Turns improvement into a gamified, motivating journey.
+4. Impact
+• Reduces stigma by offering a private, non-judgmental first step.
+• Empowers OCD patients with real-time coping tools outside therapy.
+• Supports therapists with objective, data-driven insights.
+• Predicts stress cycles, enabling early intervention.
+• Creates a scalable, 24×7 AI-powered mental wellness ecosystem.
+5. Conclusion
+Our solution merges empathetic AI conversations, ERP reinforcement, wearable-driven predictive
+analytics, and therapist integration into a unified platform.
+• For hesitant youth, it is a safe space to share and heal.
+• For OCD patients, it is a continuous therapeutic companion.
+• For therapists, it is a data-rich support tool.
+By bridging the gap between office-based therapy and real-world mental health needs, this project
+aims to deliver 24×7 proactive care for youth mental wellness.

@@ -953,9 +953,9 @@ export class VoiceSynthesis {
   /**
    * Test the current voice setup
    */
-  public testVoice(): boolean {
+  public async testVoice(): Promise<boolean> {
     if (this.preferredVoice) {
-      return this.speak('Voice test successful', undefined, undefined, true);
+      return await this.speak('Voice test successful', undefined, undefined, true);
     }
     return false;
   }

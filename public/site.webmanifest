@@ -1,0 +1,20 @@
+{
+  "name": "EmpathAI - Your Empathetic AI Companion",
+  "short_name": "EmpathAI",
+  "description": "Your personal empathetic AI companion that understands, supports, and grows with you.",
+  "icons": [
+    {
+      "src": "/EmpathAI.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/EmpathAI.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["productivity", "lifestyle", "health"],
+  "lang": "en",
+  "dir": "ltr"
+}

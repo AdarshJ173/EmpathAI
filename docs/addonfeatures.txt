@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Wellness Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f6;
+        }
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        .page.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .nav-link {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 2px solid transparent;
+        }
+        .nav-link.active, .nav-link:hover {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+        /* Soothing Chat Background */
+        .chat-bg {
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+        }
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Pyramid & Beach styles */
+        .pyramid-level { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; border-radius: 8px; color: white; transition: all 0.3s ease; width: 100%; max-width: 200px; }
+        .challenge-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .challenge-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .sunset-beach-scene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; opacity: 0; transition: opacity 1s ease-in-out; background: linear-gradient(to bottom, #2c3e50 0%, #34495e 40%, #fd746c 80%, #ffc371 100%); overflow: hidden; }
+        .sunset-beach-scene.visible { opacity: 1; }
+        .stars { position: absolute; top: 0; left: 0; width: 100%; height: 50%; background: transparent; }
+        .star { position: absolute; background: white; border-radius: 50%; animation: twinkle 5s infinite; }
+        @keyframes twinkle { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        .buildings { position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%); width: 80%; height: 10%; display: flex; align-items: flex-end; gap: 2px; }
+        .building { background: #1a252f; flex-grow: 1; }
+        .shore { position: absolute; bottom: 0; left: 0; width: 100%; height: 25%; background: #d2b48c; }
+        .water { position: absolute; bottom: 25%; left: 0; width: 100%; height: 20%; background: transparent; overflow: hidden; }
+        .wave { position: absolute; bottom: -50px; left: -5%; width: 110%; height: 100px; background: rgba(100, 149, 237, 0.5); border-radius: 50%; animation: wash-up 8s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite; }
+        .wave.w2 { animation-duration: 11s; animation-delay: -3s; background: rgba(100, 149, 237, 0.3); }
+        .wave.w3 { animation-duration: 14s; animation-delay: -5s; background: rgba(100, 149, 237, 0.2); }
+        @keyframes wash-up { 0% { transform: translateY(0) scaleX(1); } 50% { transform: translateY(-80px) scaleX(1.1); } 100% { transform: translateY(0) scaleX(1); } }
+        #timer-circle-progress { stroke-dasharray: 283; stroke-dashoffset: 283; transition: stroke-dashoffset 1s linear; }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div id="app-container" class="w-full min-h-screen">
+        
+        <!-- Main Application for User -->
+        <div id="user-app">
+             <!-- Top Navigation -->
+            <nav class="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-40">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <div class="flex items-center">
+                            <span class="font-extrabold text-xl text-blue-600">WellnessAI</span>
+                            <div class="hidden md:block ml-10">
+                                <div class="flex items-baseline space-x-4">
+                                    <a href="#" class="nav-link active px-3 py-2 rounded-md text-sm font-medium" onclick="switchPage('page-home', this)">Home</a>
+                                    <a href="#" class="nav-link px-3 py-2 rounded-md text-sm font-medium" onclick="switchPage('page-erp', this)">ERP Support</a>
+                                    <a href="#" class="nav-link px-3 py-2 rounded-md text-sm font-medium" onclick="switchPage('page-immediate-support', this)">Immediate Support</a>
+                                    <a href="#" class="nav-link px-3 py-2 rounded-md text-sm font-medium" onclick="switchPage('page-profile', this)">Profile</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                             <button class="text-sm font-medium text-gray-600 hover:text-blue-600 mr-4" onclick="switchPage('page-therapist-dashboard', this)">Therapist View</button>
+                             <div class="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center font-bold text-white">A</div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <main>
+                <!-- Page: Home -->
+                <div id="page-home" class="page active">
+                    <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-bold text-gray-900">Welcome back, Alex</h1>
+                        <p class="mt-2 text-lg text-gray-600">"The journey of a thousand miles begins with a single step." - Lao Tzu</p>
+
+                        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <!-- Left Column: Score -->
+                            <div class="md:col-span-2 bg-white p-8 rounded-2xl shadow-md">
+                                <h2 class="text-2xl font-bold text-gray-800">Your Daily Wellness</h2>
+                                <div class="mt-6 flex flex-col md:flex-row items-center gap-8">
+                                    <div class="relative">
+                                        <svg class="w-48 h-48"><circle class="text-gray-200" stroke-width="12" stroke="currentColor" fill="transparent" r="80" cx="96" cy="96"/><circle class="text-blue-500" stroke-width="12" stroke-linecap="round" stroke="currentColor" fill="transparent" r="80" cx="96" cy="96" style="stroke-dasharray: 502.655; stroke-dashoffset: 100.531;"/></svg>
+                                        <span class="absolute text-5xl font-extrabold top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">82</span>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-semibold">Great Progress!</h3>
+                                        <p class="text-gray-600 mt-2">Your score is up 5 points from yesterday. This reflects consistent engagement with your ERP exercises. Keep building on this momentum.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right Column: Quick Info -->
+                            <div class="bg-white p-8 rounded-2xl shadow-md space-y-6">
+                                <h2 class="text-2xl font-bold text-gray-800">Profile Summary</h2>
+                                <div>
+                                    <h3 class="font-semibold text-gray-700">Next ERP Challenge</h3>
+                                    <p class="text-gray-600">Touch a public doorknob</p>
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-700">Therapist</h3>
+                                    <p class="text-gray-600">Dr. Anya Sharma</p>
+                                </div>
+                                <button class="w-full py-2 bg-gray-100 rounded-md text-gray-700 font-medium hover:bg-gray-200" onclick="switchPage('page-profile', document.querySelector('.nav-link[onclick*=\'page-profile\']'))">View Full Profile</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: ERP Support -->
+                <div id="page-erp" class="page">
+                     <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-bold text-gray-900">ERP Support Center</h1>
+                        <p class="mt-2 text-lg text-gray-600">Select a challenge from your pyramid to begin today's session, or add a new one.</p>
+                        
+                        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                             <!-- Left Column: Challenge Selection -->
+                            <div class="bg-white p-8 rounded-2xl shadow-md">
+                                <h2 class="text-2xl font-bold text-gray-800">Choose Your Challenge</h2>
+                                <div id="challenge-selection-container" class="mt-4 space-y-3">
+                                    <!-- Challenges will be dynamically inserted here -->
+                                </div>
+                            </div>
+                            <!-- Right Column: Add Challenge -->
+                             <div class="bg-white p-8 rounded-2xl shadow-md">
+                                <h2 class="text-2xl font-bold text-gray-800">Add a New Challenge</h2>
+                                <div class="mt-4 bg-gray-50 p-6 rounded-xl">
+                                    <label for="trigger-input-manage" class="font-semibold text-gray-700">Challenge Description</label>
+                                    <input type="text" id="trigger-input-manage" placeholder="e.g., Use a public restroom" class="w-full mt-1 p-3 border rounded-lg">
+                                    <label for="anxiety-rating-manage" class="font-semibold text-gray-700 mt-4 block">Anxiety Rating (1-10)</label>
+                                    <select id="anxiety-rating-manage" class="w-full mt-1 p-3 border rounded-lg">
+                                        <option value="1">1 (Very Low)</option> <option value="2">2</option> <option value="3">3</option> <option value="4">4</option> <option value="5">5 (Medium)</option> <option value="6">6</option> <option value="7">7</option> <option value="8">8</option> <option value="9">9</option> <option value="10">10 (Very High)</option>
+                                    </select>
+                                    <button id="add-trigger-btn-manage" class="w-full mt-4 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">Add to Pyramid</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Immediate Support -->
+                <div id="page-immediate-support" class="page">
+                    <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 text-center">
+                        <h1 class="text-4xl font-bold text-gray-900">Immediate Support</h1>
+                        <p class="mt-2 text-lg text-gray-600">When you're feeling an overwhelming urge, use these tools to find stability.</p>
+                        <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Reassurance Card -->
+                            <div class="bg-white p-8 rounded-2xl shadow-md flex flex-col items-center text-center">
+                                <div class="bg-purple-100 p-4 rounded-full"><svg class="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 5.523-4.477 10-10 10S1 17.523 1 12 5.477 2 11 2s10 4.477 10 10z"></path></svg></div>
+                                <h2 class="mt-4 text-2xl font-bold">Reassurance Mode</h2>
+                                <p class="mt-2 text-gray-600 flex-grow">Choose this if you feel an urge because you're worried something bad might happen if you don't perform a ritual. This chat helps you challenge those "what if" thoughts with logic.</p>
+                                <button class="mt-6 w-full py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700" onclick="switchPage('page-reassurance-chat', this)">Start Reassurance Chat</button>
+                            </div>
+                            <!-- SOS Card -->
+                             <div class="bg-white p-8 rounded-2xl shadow-md flex flex-col items-center text-center">
+                                <div class="bg-red-100 p-4 rounded-full"><svg class="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                                <h2 class="mt-4 text-2xl font-bold">SOS Mode</h2>
+                                <p class="mt-2 text-gray-600 flex-grow">Choose this for urges that feel intense but don't have a clear logical reason. These tools are designed to quickly shift your focus and help you feel grounded in the present moment.</p>
+                                <div class="mt-6 w-full space-y-3">
+                                    <button class="w-full py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600" onclick="alert('Distraction tools activated.')">Distract Me</button>
+                                    <button class="w-full py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-800" onclick="alert('Work Mode overlay activated.')">Work Mode</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Reassurance Chat -->
+                <div id="page-reassurance-chat" class="page">
+                     <div class="relative h-[calc(100vh-4rem)] flex flex-col">
+                        <div class="chat-bg"></div>
+                        <div class="relative z-10 p-4 border-b border-white/20 flex items-center gap-4 text-white">
+                            <button class="font-bold" onclick="switchPage('page-immediate-support', this)">&larr;</button>
+                            <h1 class="text-xl font-bold">Reassurance Chat</h1>
+                        </div>
+                        <div class="relative z-10 flex-grow p-4 space-y-4 overflow-y-auto text-white">
+                            <div class="flex justify-start"><div class="bg-white/20 backdrop-blur-md p-3 rounded-2xl max-w-lg">I see you've started Reassurance Mode. I'm here to help you think through this logically. What obsession is bothering you right now?</div></div>
+                            <div class="flex justify-end"><div class="bg-blue-500 p-3 rounded-2xl max-w-lg">I feel like if I don't check the lock again, something bad will happen.</div></div>
+                        </div>
+                        <div class="relative z-10 p-4 border-t border-white/20">
+                            <input type="text" placeholder="Type your message..." class="w-full p-3 bg-white/10 backdrop-blur-md border-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white text-white placeholder-white/70">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Profile -->
+                <div id="page-profile" class="page">
+                     <div class="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-4xl font-bold text-gray-900">Your Profile</h1>
+                        <p class="mt-2 text-lg text-gray-600">Manage your personal information and application settings.</p>
+                        <div class="mt-8 bg-white p-8 rounded-2xl shadow-md">
+                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div><label class="font-semibold">Name</label><p class="p-3 bg-gray-100 rounded-md mt-1">Alex Johnson</p></div>
+                                <div><label class="font-semibold">Email</label><p class="p-3 bg-gray-100 rounded-md mt-1">alex.j@email.com</p></div>
+                                <div><label class="font-semibold">Therapist</label><p class="p-3 bg-gray-100 rounded-md mt-1">Dr. Anya Sharma</p></div>
+                                <div><label class="font-semibold">Member Since</label><p class="p-3 bg-gray-100 rounded-md mt-1">January 2024</p></div>
+                             </div>
+                             <button class="mt-6 px-5 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700">Edit Profile</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: ERP Session -->
+                <div id="page-erp-session" class="page">
+                    <div class="relative w-full h-screen flex flex-col items-center justify-center bg-gray-800">
+                        <div id="beach-scene-main" class="sunset-beach-scene">
+                            <div class="stars"></div><div class="buildings"></div><div class="water"><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div></div><div class="shore"></div>
+                        </div>
+                         <div class="absolute top-5 left-5 z-20">
+                            <button class="px-4 py-2 bg-white/20 text-white backdrop-blur-md rounded-lg" onclick="exitSession()">Exit Session</button>
+                        </div>
+                        <div class="relative z-10 text-center text-white p-6">
+                            <div id="session-prompt-main">
+                                <h2 id="session-prompt-text-main" class="text-4xl font-bold">It's time. Please touch a public doorknob.</h2>
+                                <button id="start-timer-btn-main" class="mt-8 px-8 py-3 bg-white text-blue-600 font-bold rounded-full text-lg">I've Started</button>
+                            </div>
+                            <div id="session-timer-main" class="hidden">
+                                <div class="relative w-48 h-48 mx-auto"><svg class="w-full h-full" viewBox="0 0 100 100"><circle class="text-white opacity-30" stroke-width="8" cx="50" cy="50" r="45" fill="transparent"></circle><circle id="timer-circle-progress-main" class="text-white" stroke-width="8" cx="50" cy="50" r="45" fill="transparent" stroke-linecap="round" transform="rotate(-90 50 50)"></circle></svg><span id="timer-text-main" class="absolute inset-0 flex items-center justify-center text-4xl font-bold">60</span></div>
+                                <p id="supportive-message-main" class="mt-6 text-xl min-h-[56px] font-semibold flex items-center justify-center">Breathe deeply.</p>
+                            </div>
+                            <div id="session-complete-main" class="hidden">
+                                <h2 class="text-4xl font-bold">You did it!</h2><p class="mt-4 text-lg">You successfully held on for 60 seconds.</p>
+                                <button class="mt-8 px-8 py-3 bg-white text-blue-600 font-bold rounded-full text-lg" onclick="switchPage('page-erp', this)">Back to ERP Center</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+        
+        <!-- Therapist Dashboard (remains the same) -->
+        <div id="page-therapist-dashboard" class="page">
+             <div class="flex h-screen bg-gray-100">
+            <div class="bg-[#1a253c] text-white w-64 space-y-6 py-7 px-2">
+                <div class="text-white text-2xl font-semibold px-4">TherapistAI</div>
+                <div class="px-4">
+                    <p class="text-xs text-gray-400">PATIENTS</p>
+                    <nav class="mt-2 space-y-1">
+                        <a href="#" class="block py-2.5 px-4 rounded transition duration-200 bg-blue-700">Alex Johnson</a>
+                        <a href="#" class="block py-2.5 px-4 rounded transition duration-200 hover:bg-blue-700">Maria Garcia</a>
+                    </nav>
+                </div>
+                 <button class="absolute bottom-4 left-4 text-sm text-gray-300 hover:text-white" onclick="switchPage('page-home', this)">Exit to User View</button>
+            </div>
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <header class="bg-white shadow p-4"><h1 class="text-2xl font-bold text-gray-900">Patient Dashboard: Alex Johnson</h1></header>
+                <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-2xl shadow"><h3 class="font-bold text-lg">Compulsion Frequency (Weekly)</h3><canvas id="compulsionChart"></canvas></div>
+                        <div class="bg-white p-6 rounded-2xl shadow"><h3 class="font-bold text-lg">ERP Progress (Delay Time)</h3><canvas id="erpChart"></canvas></div>
+                        <div class="bg-white p-6 rounded-2xl shadow"><h3 class="font-bold text-lg">Coping Tools Usage</h3><canvas id="copingChart"></canvas></div>
+                        <div class="bg-blue-50 p-6 rounded-2xl shadow col-span-1 md:col-span-2 lg:col-span-3"><h3 class="font-bold text-lg text-blue-900">AI Insights</h3><ul class="mt-4 space-y-3 list-disc list-inside text-blue-800"><li>A 15% decrease in compulsions correlates with increased ERP delay times.</li><li>Patient relies on 'SOS - Distraction' 70% of the time during crisis moments, suggesting a need to reinforce other coping strategies.</li></ul></div>
+                    </div>
+                </main>
+            </div>
+        </div>
+        </div>
+
+    </div>
+
+    <script>
+        const pages = document.querySelectorAll('.page');
+        const navLinks = document.querySelectorAll('.nav-link');
+
+        function switchPage(pageId, navElement) {
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            const isTherapistView = pageId.includes('therapist');
+            document.getElementById('user-app').style.display = isTherapistView ? 'none' : 'block';
+
+            if (isTherapistView) {
+                renderTherapistCharts();
+            } else {
+                document.getElementById('page-therapist-dashboard').classList.remove('active');
+            }
+
+            if(navElement && navElement.classList.contains('nav-link')){
+                navLinks.forEach(link => link.classList.remove('active'));
+                navElement.classList.add('active');
+            }
+            
+            if(navElement && navElement.innerText.includes('User View')) {
+                navLinks.forEach(link => link.classList.remove('active'));
+                document.querySelector('.nav-link[onclick*="page-home"]').classList.add('active');
+            }
+        }
+        
+        let hierarchy = [{text: "Avoid pavement cracks", rating: 3, id: 1}, {text: "Touch doorknob", rating: 6, id: 2}];
+        const challengeSelectionContainer = document.getElementById('challenge-selection-container');
+        const triggerInput = document.getElementById('trigger-input-manage');
+        const anxietyRating = document.getElementById('anxiety-rating-manage');
+        const addTriggerBtn = document.getElementById('add-trigger-btn-manage');
+        
+        addTriggerBtn.addEventListener('click', () => {
+             const text = triggerInput.value.trim();
+             if (text) {
+                hierarchy.push({ text, rating: parseInt(anxietyRating.value), id: Date.now() });
+                renderPyramid();
+                triggerInput.value = '';
+                anxietyRating.value = 1;
+             }
+        });
+        
+        function getRatingColor(rating) {
+            const hue = 120 - (rating - 1) * 12; return `hsl(${hue}, 70%, 50%)`;
+        }
+
+        function selectChallenge(challengeId) {
+            const challenge = hierarchy.find(item => item.id === challengeId);
+            if (!challenge) return;
+
+            const sessionPromptText = document.getElementById('session-prompt-text-main');
+            const challengeDescription = `It's time. Please ${challenge.text.charAt(0).toLowerCase() + challenge.text.slice(1)}.`;
+            sessionPromptText.textContent = challengeDescription;
+            switchPage('page-erp-session');
+        }
+
+        function renderPyramid() {
+            challengeSelectionContainer.className = 'mt-4 space-y-3 flex flex-col items-center'; // Center the items
+            challengeSelectionContainer.innerHTML = '';
+            hierarchy.sort((a, b) => a.rating - b.rating);
+
+             if (hierarchy.length === 0) {
+                 challengeSelectionContainer.innerHTML = `<p class="text-gray-500 text-center italic">Your pyramid is empty. Add a challenge to begin.</p>`;
+             } else {
+                const maxWidth = 100; // %
+                const minWidth = 60; // %
+                hierarchy.forEach((item, index) => {
+                    const isRecommended = index === 0;
+                    const challengeEl = document.createElement('div');
+
+                    // Set width to create pyramid shape
+                    const widthPercent = minWidth + (index / (hierarchy.length - 1 || 1)) * (maxWidth - minWidth);
+                    challengeEl.style.width = `${widthPercent}%`;
+                    
+                    challengeEl.className = `challenge-item bg-white p-4 rounded-lg flex items-center justify-between shadow-sm cursor-pointer border-2 ${isRecommended ? 'border-blue-500' : 'border-transparent'}`;
+                    challengeEl.onclick = () => selectChallenge(item.id);
+                    
+                    challengeEl.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold" style="background-color: ${getRatingColor(item.rating)};">${item.rating}</span>
+                            <span class="font-medium truncate">${item.text}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${isRecommended ? '<span class="text-xs font-bold text-blue-500 whitespace-nowrap">NEXT UP</span>' : ''}
+                            <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                    `;
+                    challengeSelectionContainer.appendChild(challengeEl);
+                });
+            }
+        }
+        
+        const supportiveQuotes = [
+            "Breathe deeply. You are in control.",
+            "This feeling is temporary and it will pass.",
+            "Stay present. Focus on what you can see and hear.",
+            "You are stronger than this urge.",
+            "Embrace the discomfort. It's a sign of growth.",
+            "One moment at a time. You can do this.",
+            "Let the anxious thoughts come and go like clouds."
+        ];
+
+        const beachScene = document.getElementById('beach-scene-main');
+        const sessionPrompt = document.getElementById('session-prompt-main');
+        const sessionTimer = document.getElementById('session-timer-main');
+        const sessionComplete = document.getElementById('session-complete-main');
+        const startTimerBtn = document.getElementById('start-timer-btn-main');
+        const timerText = document.getElementById('timer-text-main');
+        const timerCircle = document.getElementById('timer-circle-progress-main');
+        
+        let timerInterval = null;
+        let quoteInterval = null;
+
+        startTimerBtn.addEventListener('click', () => {
+            sessionPrompt.style.display = 'none';
+            sessionTimer.style.display = 'block';
+            beachScene.classList.add('visible');
+            startVisualTimer(60);
+        });
+
+        function startVisualTimer(duration) {
+            const supportiveMessageEl = document.getElementById('supportive-message-main');
+            
+            if (timerInterval) clearInterval(timerInterval);
+            if (quoteInterval) clearInterval(quoteInterval);
+
+            let timeLeft = duration;
+            timerText.textContent = timeLeft;
+            supportiveMessageEl.textContent = supportiveQuotes[0];
+            timerCircle.style.strokeDashoffset = 283;
+
+            quoteInterval = setInterval(() => {
+                const randomIndex = Math.floor(Math.random() * supportiveQuotes.length);
+                supportiveMessageEl.textContent = supportiveQuotes[randomIndex];
+            }, 10000);
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerText.textContent = timeLeft;
+                 const offset = 283 - (timeLeft / duration) * 283;
+                 timerCircle.style.strokeDashoffset = offset;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    clearInterval(quoteInterval);
+                    beachScene.classList.remove('visible');
+                    sessionTimer.style.display = 'none';
+                    sessionComplete.style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        function exitSession() {
+            if (timerInterval) clearInterval(timerInterval);
+            if (quoteInterval) clearInterval(quoteInterval);
+            
+            beachScene.classList.remove('visible');
+            
+            sessionTimer.style.display = 'none';
+            sessionComplete.style.display = 'none';
+            sessionPrompt.style.display = 'block';
+
+            switchPage('page-erp');
+        }
+        
+        let charts = {};
+        function renderTherapistCharts() {
+            if (charts.compulsion) charts.compulsion.destroy();
+            charts.compulsion = new Chart(document.getElementById('compulsionChart'), { type: 'line', data: { labels: ['W1', 'W2', 'W3', 'W4'], datasets: [{ label: 'Compulsions', data: [25, 22, 18, 15], borderColor: '#4A90E2', tension: 0.1 }] }});
+            if (charts.erp) charts.erp.destroy();
+            charts.erp = new Chart(document.getElementById('erpChart'), { type: 'bar', data: { labels: ['Doorknob', 'Cracks', 'Hand Wash'], datasets: [{ label: 'Avg. Delay (s)', data: [45, 70, 30], backgroundColor: '#82C793' }] }});
+            if (charts.coping) charts.coping.destroy();
+            charts.coping = new Chart(document.getElementById('copingChart'), { type: 'doughnut', data: { labels: ['Distract', 'Work', 'Reassurance'], datasets: [{ data: [70, 10, 20], backgroundColor: ['#8A6EAD', '#50E3C2', '#F5A623'] }] }});
+        }
+        
+        const starsContainer = document.querySelector('.stars');
+        const buildingsContainer = document.querySelector('.buildings');
+        for(let i=0; i<50; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.width = `${Math.random() * 2 + 1}px`; star.style.height = star.style.width;
+            star.style.top = `${Math.random() * 100}%`; star.style.left = `${Math.random() * 100}%`;
+            star.style.animationDelay = `${Math.random() * 5}s`;
+            starsContainer.appendChild(star);
+        }
+        for(let i=0; i<20; i++) {
+            const b = document.createElement('div');
+            b.className = 'building';
+            b.style.height = `${Math.random() * 70 + 20}%`; b.style.opacity = `${Math.random() * 0.5 + 0.3}`;
+            buildingsContainer.appendChild(b);
+        }
+        renderPyramid();
+    </script>
+</body>
+</html>
+
